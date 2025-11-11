@@ -2,6 +2,17 @@
 
 NVIDIA Isaac Sim 4.5.0 environment for ROS 2 testing of the SE3 Hello Robot.
 
+
+## To insall Isaac Sim with Pixi do
+
+`pixi shell` (in the root diretory of this repo)
+
+## Interior scene used
+
+https://huggingface.co/datasets/spatialverse/InteriorAgent/tree/main
+
+`kujale_0003`
+
 ## Prerequisites
 
 - Omniverse Isaac Sim 4.5.0  
