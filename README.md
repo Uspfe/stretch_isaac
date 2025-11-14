@@ -1,6 +1,6 @@
 # stretch_isaac
 
-NVIDIA Isaac Sim 4.5.0 environment for ROS 2 testing of the SE3 Hello Robot.
+NVIDIA Isaac Sim 5.1.0 environment for ROS 2 testing of the SE3 Hello Robot.
 
 
 ## To install Isaac Sim with Pixi do
