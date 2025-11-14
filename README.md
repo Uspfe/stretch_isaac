@@ -18,6 +18,10 @@ NVIDIA Isaac Sim 4.5.0 environment for ROS 2 testing of the SE3 Hello Robot.
 
 - the file `hm3d_scene.usd` contains a scene (including imported stretch) from the [Habitat-Matterport3D](https://github.com/matterport/habitat-matterport-3dresearch?tab=readme-ov-file) dataset
 
+## TODO
+
+- integrade ROS functionality into propely set-up stretch model from https://github.com/hello-robot/stretch_isaacsim
+
 ---
 ---
 
