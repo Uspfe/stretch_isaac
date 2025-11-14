@@ -3,15 +3,25 @@
 NVIDIA Isaac Sim 4.5.0 environment for ROS 2 testing of the SE3 Hello Robot.
 
 
-## To insall Isaac Sim with Pixi do
+## To install Isaac Sim with Pixi do
 
-`pixi shell` (in the root diretory of this repo)
+- `pixi shell` (in the root diretory of this repo)
+- launch by executing `isaacsim`
 
-## Interior scene used
+## The stretch model
 
-https://huggingface.co/datasets/spatialverse/InteriorAgent/tree/main
+- open or import `importable_stretch.usd` into your IsaacSim stage
 
-`kujale_0003`
+## Interior scenes
+
+- the file `interior_agent_scene.usd` contains the scene (including imported stretch) `kujale_0003` from the dataset https://huggingface.co/datasets/spatialverse/InteriorAgent/tree/main
+
+- the file `hm3d_scene.usd` contains a scene (including imported stretch) from the [Habitat-Matterport3D](https://github.com/matterport/habitat-matterport-3dresearch?tab=readme-ov-file) dataset
+
+---
+---
+
+# Outdated instructions
 
 ## Prerequisites
 
