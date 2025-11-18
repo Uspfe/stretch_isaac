@@ -22,13 +22,13 @@ def main(simulation_app):
     world.scene.add_default_ground_plane()
 
     # load robot
-    stretch_asset_path = "/home/benni/repos/benni_stretch_issac/importable_stretch.usd"
+    stretch_asset_path = "/home/benni/repos/stretch_isaac/importable_stretch.usd"
     stretch = add_reference_to_stage(usd_path=stretch_asset_path, prim_path="/map")
 
     use_matterport3d: bool = True
 
     if use_matterport3d:
-        scene_asset_path = "/home/benni/Downloads/hm3d-minival-glb-v0.2/00800-TEEsavR23oF/TEEsavR23oF.usd"
+        scene_asset_path = "/home/benni/datasets/hm3d-minival-glb-v0.2/00800-TEEsavR23oF/TEEsavR23oF_collision.usd"
         switch_lighting("camera")
     else:
         scene_asset_path = (
@@ -39,7 +39,7 @@ def main(simulation_app):
 
     world.reset()
 
-    for i in range(1000):
+    for i in range(5000):
         world.step(render=True)  # execute one physics step and one rendering step
 
     simulation_app.close()

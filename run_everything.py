@@ -2,6 +2,9 @@ from enum import Enum
 import subprocess
 import threading
 import sys
+import os
+import time
+from typing import Union
 
 class OutMode(Enum):
     CONSOLE = 0
@@ -17,17 +20,42 @@ COLORS = {
     "reset":  "\033[0m",
 }
 
-def forward_output_and_handle_input(proc, name: str, color: str, triggers: dict[str, str], mode: OutMode = OutMode.CONSOLE):
-    if mode == OutMode.CONSOLE:
-        prefix = f"{color}[{name}]{COLORS['reset']} "
-        for line in proc.stdout:
-            sys.stdout.write(prefix + line)
-            # Check triggers
-            for pattern, response in triggers.items():
-                if pattern in line:
-                    proc.stdin.write(response)   # send input to process
-                    proc.stdin.flush()
-        proc.stdout.close()
+class ProcessHandler:
+    def __init__(self, proc, name: str, color: str, triggers: dict[Union[str, float], str], mode = OutMode.CONSOLE):
+        self.proc = proc
+        self.name = name
+        self.color = color
+        self.triggers = triggers
+        self.mode = mode
+
+        self.start = time.monotonic()
+        self.fired_time_triggers = set()
+
+    def forward_output_and_handle_input(self):
+
+        for line in self.proc.stdout:
+            if self.mode == OutMode.CONSOLE:
+                prefix = f"{self.color}[{self.name}]{COLORS['reset']} "
+                sys.stdout.write(prefix + line)
+
+            # string triggers
+            for pattern, response in self.triggers.items():
+                if isinstance(pattern, str) and pattern in line:
+                    if self.proc.stdin:
+                        self.proc.stdin.write(response)
+                        self.proc.stdin.flush()
+
+            # time-based triggers
+            now = time.monotonic() - self.start
+            for pattern, response in self.triggers.items():
+                if isinstance(pattern, (int, float)) and pattern <= now and pattern not in self.fired_time_triggers:
+                    self.fired_time_triggers.add(pattern)
+                    if self.proc.stdin:
+                        self.proc.stdin.write(response)
+                        self.proc.stdin.flush()
+
+        self.proc.stdout.close()
+
 
 def main():
     # List of processes to launch
@@ -40,7 +68,7 @@ def main():
                 "python",
                 "standalone_sim.py",
             ],
-            "cwd": "/home/benni/repos/benni_stretch_issac/",
+            "cwd": "/home/benni/repos/stretch_isaac/",
             "color": COLORS["red"],
             "triggers": {},
             "output": OutMode.DISABLED,
@@ -68,10 +96,10 @@ def main():
                 "-p",
                 "objects/point_cloud/publishing_rate:=0.0",
             ],
-            "cwd": "/home/benni/bringup_active_mapmaintenance/perceive_semantix/",
+            "cwd": "/home/benni/repos/bringup_active_mapmaintenance/perceive_semantix/",
             "color": COLORS["blue"],
             "triggers": {},
-            "output": OutMode.DISABLED,
+            "output": OutMode.CONSOLE,
         },
         {
             "name": "StretchMPC",
@@ -83,7 +111,7 @@ def main():
                 "stretch_mpc_ros",
                 "planner.launch.py",
             ],
-            "cwd": "/home/benni/bringup_active_mapmaintenance/stretch_mpc/",
+            "cwd": "/home/benni/repos/bringup_active_mapmaintenance/stretch_mpc/",
             "color": COLORS["yellow"],
             "triggers": {},
             "output": OutMode.DISABLED,
@@ -98,12 +126,21 @@ def main():
                 "offline_bringup_active_mapmaintenance",
                 "main_coordinator",
             ],
-            "cwd": "/home/benni/bringup_active_mapmaintenance/offline_bringup_active_mapmaintenance/",
+            "cwd": "/home/benni/repos/bringup_active_mapmaintenance/offline_bringup_active_mapmaintenance/",
             "color": COLORS["green"],
-            "triggers": {"What would you like to do? (type 'maintain', 'explore', 'random', 'patrol', 'home' or type anything else to search a specific object)": "explore\n"},
+            "triggers": {10.0: "explore\n"},
             "output": OutMode.CONSOLE,
         },
     ]
+
+    # Verify that each configured working directory exists
+    for p in processes:
+        cwd = p.get("cwd")
+        if not cwd:
+            continue
+        if not os.path.isdir(cwd):
+            sys.stderr.write(f"Error: cwd for process '{p.get('name', '<unknown>')}' does not exist: {cwd}\n")
+            sys.exit(1)
 
     running = []
 
@@ -112,12 +149,14 @@ def main():
             p["cmd"],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
+            stdin=subprocess.PIPE if p["triggers"] else None,
             cwd=p["cwd"],
             text=True,
         )
 
         # Launch thread to read output
-        t = threading.Thread(target=forward_output_and_handle_input, args=(proc, p["name"], p["color"], p["triggers"], p["output"]))
+        handler = ProcessHandler(proc, p["name"], p["color"], p["triggers"], p["output"])
+        t = threading.Thread(target=handler.forward_output_and_handle_input)
         t.daemon = True
         t.start()
 
