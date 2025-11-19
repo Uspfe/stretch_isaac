@@ -1,12 +1,13 @@
 import argparse
 import os
+import pty
+import signal
 import subprocess
 import sys
 import threading
 import time
 from enum import Enum
 from typing import Literal, Optional, Union
-import signal
 
 
 class OutMode(Enum):
@@ -29,12 +30,15 @@ class ProcessHandler:
     def __init__(
         self,
         proc,
+        master_fd,
         name: str,
         color: str,
         triggers: dict[Union[str, float], str],
         mode=OutMode.CONSOLE,
     ):
         self.proc = proc
+        # master_fd is the integer file descriptor for the PTY master
+        self.master_fd = master_fd
         self.name = name
         self.color = color
         self.triggers = triggers
@@ -44,32 +48,69 @@ class ProcessHandler:
         self.fired_triggers = set()
 
     def forward_output_and_handle_input(self):
-        for line in self.proc.stdout:
-            if self.mode == OutMode.CONSOLE:
-                prefix = f"{self.color}[{self.name}]{COLORS['reset']} "
-                sys.stdout.write(prefix + line.rstrip() + "\n\r")
+        # Read raw bytes from the PTY master fd so prompts without newlines are shown
+        prefix = f"{self.color}[{self.name}]{COLORS['reset']} "
+        at_line_start = True
+        accum = ""
+        try:
+            while True:
+                try:
+                    data = os.read(self.master_fd, 1024)
+                except OSError:
+                    break
+                if not data:
+                    break
+                try:
+                    text = data.decode("utf-8", errors="ignore")
+                except Exception:
+                    text = ""
 
-            # string triggers
-            for pattern, response in self.triggers.items():
-                if (
-                    isinstance(pattern, str)
-                    and pattern in line
-                    and pattern not in self.fired_triggers
-                ):
-                    self.fired_triggers.add(pattern)
-                    if self.proc.stdin:
-                        self.proc.stdin.write(response)
-                        self.proc.stdin.flush()
-                        sys.stdout.write(
-                            f"{self.color}[{self.name}]{COLORS['reset']} Fired string trigger '{pattern}': {response.strip()}\n"
-                        )
+                accum += text
+                # Keep accum bounded
+                if len(accum) > 8192:
+                    accum = accum[-8192:]
 
-        self.proc.stdout.close()
+                # Print text to stdout, adding prefix at line starts
+                if self.mode == OutMode.CONSOLE:
+                    parts = text.split("\n")
+                    for i, part in enumerate(parts):
+                        if at_line_start:
+                            sys.stdout.write(prefix)
+                        sys.stdout.write(part)
+                        if i < len(parts) - 1:
+                            sys.stdout.write("\n")
+                            at_line_start = True
+                        else:
+                            at_line_start = False
+                    sys.stdout.flush()
+
+                # Check string triggers against the accumulated text
+                for pattern, response in self.triggers.items():
+                    if (
+                        isinstance(pattern, str)
+                        and pattern in accum
+                        and pattern not in self.fired_triggers
+                    ):
+                        self.fired_triggers.add(pattern)
+                        try:
+                            os.write(self.master_fd, response.encode())
+                            if self.mode == OutMode.CONSOLE:
+                                sys.stdout.write(
+                                    f"{prefix}Fired string trigger '{pattern}': {response.strip()}\n"
+                                )
+                                sys.stdout.flush()
+                        except Exception:
+                            pass
+        finally:
+            try:
+                os.close(self.master_fd)
+            except Exception:
+                pass
 
     def handle_time_triggers(self):
         if self.proc.poll() is not None:
-            return # process has exited
-        if self.proc.stdin is None:
+            return  # process has exited
+        if getattr(self, "master_fd", None) is None:
             return
         now = time.time() - self.start
         for pattern, response in self.triggers.items():
@@ -78,12 +119,15 @@ class ProcessHandler:
                 and pattern <= now
                 and pattern not in self.fired_triggers
             ):
-                sys.stdout.write(
-                    f"{self.color}[{self.name}]{COLORS['reset']} Fired time trigger at {now:.1f}s: {response.strip()}\n"
-                )
+                if self.mode == OutMode.CONSOLE:
+                    sys.stdout.write(
+                        f"{self.color}[{self.name}]{COLORS['reset']} Fired time trigger at {now:.1f}s: {response.strip()}\n"
+                    )
                 self.fired_triggers.add(pattern)
-                self.proc.stdin.write(response)
-                self.proc.stdin.flush()
+                try:
+                    os.write(self.master_fd, response.encode())
+                except Exception:
+                    pass
 
 
 def main():
@@ -157,15 +201,23 @@ def main():
                 "cwd": "/home/benni/repos/stretch_ai",
                 "color": COLORS["green"],
                 "triggers": {
-                    "Enter desired mode [E (explore and mapping) / M (Open vocabulary pick and place)]" : "E\n"
+                    "Enter desired mode [E (explore and mapping) / M (Open vocabulary pick and place)]": "E\n"
                 },
                 "output": OutMode.CONSOLE,
             },
         ]
     elif app.lower() == "perceivesemantix":
         # initial_scene_path = "/home/benni/datasets/sim_results/perceive_semantix/kujiale_0003/exploration/output/1763558507-887001.pkl" if not args.explore else "\"\""
-        initial_scene_path = "/home/benni/datasets/sim_results/perceive_semantix/hm3d-0/exploration/output/1763560487-865056.pkl" if not args.explore else "\"\""
-        triggers = {"What would you like to do? (type 'maintain'": "explore\n"} if args.explore else { 15.0: "sink\n" }
+        initial_scene_path = (
+            "/home/benni/datasets/sim_results/perceive_semantix/hm3d-0/exploration/output/1763560487-865056.pkl"
+            if not args.explore
+            else '""'
+        )
+        triggers = (
+            {"What would you like to do? (type 'maintain'": "explore\n"}
+            if args.explore
+            else {15.0: "sink\n"}
+        )
         processes += [
             {
                 "name": "PerceiveSemantix",
@@ -192,7 +244,7 @@ def main():
                     "-p",
                     "occupancy_map/publishing_rate:=0.5",
                     "-p",
-                    f"initial_scene_path:={initial_scene_path}"
+                    f"initial_scene_path:={initial_scene_path}",
                 ],
                 "cwd": "/home/benni/repos/bringup_active_mapmaintenance/perceive_semantix/",
                 "color": COLORS["blue"],
@@ -263,18 +315,29 @@ def main():
     running_processes = []
     process_handlers = []
     for p in processes:
+        # Create a pseudo-terminal so the subprocess believes it's attached to a terminal
+        master_fd, slave_fd = pty.openpty()
+
         proc = subprocess.Popen(
             p["cmd"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            stdin=subprocess.PIPE if p["triggers"] else None,
+            stdin=slave_fd,
+            stdout=slave_fd,
+            stderr=slave_fd,
             cwd=p["cwd"],
-            text=True,
+            preexec_fn=os.setsid,
+            close_fds=True,
+            text=False,
         )
 
-        # Launch thread to read output
+        # Close the slave fd in the parent; the child has it open.
+        try:
+            os.close(slave_fd)
+        except Exception:
+            pass
+
+        # Launch thread to read output from the master fd
         handler = ProcessHandler(
-            proc, p["name"], p["color"], p["triggers"], p["output"]
+            proc, master_fd, p["name"], p["color"], p["triggers"], p["output"]
         )
         t = threading.Thread(target=handler.forward_output_and_handle_input)
         t.daemon = True
@@ -312,12 +375,9 @@ def main():
             time.sleep(0.1)
             for handler in process_handlers:
                 handler.handle_time_triggers()
-            
+
     except KeyboardInterrupt:
-        try:
-            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
-        except Exception as e:
-            sys.stderr.write(f"Error terminating process: {e}\n")
+        stop_processes(running_processes)
 
 
 if __name__ == "__main__":
