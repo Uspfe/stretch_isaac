@@ -6,6 +6,7 @@ import threading
 import time
 from enum import Enum
 from typing import Literal, Optional, Union
+import signal
 
 
 class OutMode(Enum):
@@ -63,23 +64,26 @@ class ProcessHandler:
                             f"{self.color}[{self.name}]{COLORS['reset']} Fired string trigger '{pattern}': {response.strip()}\n"
                         )
 
-            # time-based triggers
-            now = time.time() - self.start
-            for pattern, response in self.triggers.items():
-                if (
-                    isinstance(pattern, (int, float))
-                    and pattern <= now
-                    and pattern not in self.fired_triggers
-                ):
-                    sys.stdout.write(
-                        f"{self.color}[{self.name}]{COLORS['reset']} Fired time trigger at {now:.1f}s: {response.strip()}\n"
-                    )
-                    self.fired_triggers.add(pattern)
-                    if self.proc.stdin:
-                        self.proc.stdin.write(response)
-                        self.proc.stdin.flush()
-
         self.proc.stdout.close()
+
+    def handle_time_triggers(self):
+        if self.proc.poll() is not None:
+            return # process has exited
+        if self.proc.stdin is None:
+            return
+        now = time.time() - self.start
+        for pattern, response in self.triggers.items():
+            if (
+                isinstance(pattern, (int, float))
+                and pattern <= now
+                and pattern not in self.fired_triggers
+            ):
+                sys.stdout.write(
+                    f"{self.color}[{self.name}]{COLORS['reset']} Fired time trigger at {now:.1f}s: {response.strip()}\n"
+                )
+                self.fired_triggers.add(pattern)
+                self.proc.stdin.write(response)
+                self.proc.stdin.flush()
 
 
 def main():
@@ -99,6 +103,10 @@ def main():
         choices=["PerceiveSemantix", "DynaMem"],
         help="Application to run (PerceiveSemantix or DynaMem). If not provided, only IsaacSim is launched.",
     )
+    parser.add_argument(
+        "--explore",
+        action="store_true",
+    )
     args = parser.parse_args()
     max_runtime = args.max_runtime
     app: Optional[Literal["PerceiveSemantix", "DynaMem"]] = args.app
@@ -115,7 +123,7 @@ def main():
             "cwd": "/home/benni/repos/stretch_isaac/",
             "color": COLORS["red"],
             "triggers": {},
-            "output": OutMode.CONSOLE,
+            "output": OutMode.DISABLED,
         },
     ]
 
@@ -149,6 +157,9 @@ def main():
             },
         ]
     elif app.lower() == "perceivesemantix":
+        # initial_scene_path = "/home/benni/datasets/sim_results/perceive_semantix/kujiale_0003/exploration/output/1763558507-887001.pkl" if not args.explore else "\"\""
+        initial_scene_path = "/home/benni/datasets/sim_results/perceive_semantix/hm3d-0/exploration/output/1763560487-865056.pkl" if not args.explore else "\"\""
+        triggers = {"What would you like to do? (type 'maintain'": "explore\n"} if args.explore else { 15.0: "sink\n" }
         processes += [
             {
                 "name": "PerceiveSemantix",
@@ -167,18 +178,20 @@ def main():
                     "-p",
                     "occupancy_map/floor_height:=0.05",
                     "-p",
-                    "store_output:=False",
+                    f"store_output:={str(args.explore)}",
                     "-p",
                     "publishing_rate_background_pointcloud:=0.0",
                     "-p",
                     "objects/point_cloud/publishing_rate:=0.0",
                     "-p",
                     "occupancy_map/publishing_rate:=0.5",
+                    "-p",
+                    f"initial_scene_path:={initial_scene_path}"
                 ],
                 "cwd": "/home/benni/repos/bringup_active_mapmaintenance/perceive_semantix/",
                 "color": COLORS["blue"],
                 "triggers": {},
-                "output": OutMode.CONSOLE,
+                "output": OutMode.DISABLED,
             },
             {
                 "name": "StretchMPC",
@@ -193,7 +206,7 @@ def main():
                 "cwd": "/home/benni/repos/bringup_active_mapmaintenance/stretch_mpc/",
                 "color": COLORS["yellow"],
                 "triggers": {},
-                "output": OutMode.CONSOLE,
+                "output": OutMode.DISABLED,
             },
             # {
             #     "name": "NavigationGoalActionClient",
@@ -222,10 +235,8 @@ def main():
                 ],
                 "cwd": "/home/benni/repos/bringup_active_mapmaintenance/offline_bringup_active_mapmaintenance/",
                 "color": COLORS["green"],
-                "triggers": {
-                    "What would you like to do? (type 'maintain'": "explore\n"
-                },
-                "output": OutMode.DISABLED,
+                "triggers": triggers,
+                "output": OutMode.CONSOLE,
             },
         ]
     else:
@@ -244,6 +255,7 @@ def main():
             sys.exit(1)
 
     running_processes = []
+    process_handlers = []
     for p in processes:
         proc = subprocess.Popen(
             p["cmd"],
@@ -262,13 +274,14 @@ def main():
         t.daemon = True
         t.start()
 
+        process_handlers.append(handler)
         running_processes.append(proc)
 
     def stop_processes(procs):
         sys.stdout.write("Stopping processes...\n")
         for proc in procs:
             try:
-                proc.terminate()
+                os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
             except Exception as e:
                 sys.stderr.write(f"Error terminating process: {e}\n")
 
@@ -289,11 +302,16 @@ def main():
 
     # Wait for all to finish
     try:
-        for proc in running_processes:
-            proc.wait()
+        while any([proc.poll() is None for proc in running_processes]):
+            time.sleep(0.1)
+            for handler in process_handlers:
+                handler.handle_time_triggers()
+            
     except KeyboardInterrupt:
-        for proc in running_processes:
-            proc.terminate()
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+        except Exception as e:
+            sys.stderr.write(f"Error terminating process: {e}\n")
 
 
 if __name__ == "__main__":

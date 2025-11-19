@@ -20,6 +20,8 @@ extra-index-urls = ["https://pypi.nvidia.com"]
 isaac_sim_package_path = "$PIXI_PROJECT_ROOT/.pixi/envs/default/lib/python3.11/site-packages/isaacsim"
 ROS_DISTRO = "humble"
 LD_LIBRARY_PATH = "$LD_LIBRARY_PATH:$isaac_sim_package_path/exts/isaacsim.ros2.bridge/humble/lib"
+RMW_IMPLEMENTATION="rmw_fastrtps_cpp"
+ROS_DISCOVERY_SERVER="127.0.0.1:14520"
 
 [pypi-dependencies]
 isaacsim = { version = "==5.1.0", extras = ["all", "extscache", "ros2"] }
