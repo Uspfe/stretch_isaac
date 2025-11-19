@@ -1,3 +1,4 @@
+import argparse
 import os
 import subprocess
 import sys
@@ -38,8 +39,8 @@ class ProcessHandler:
         self.triggers = triggers
         self.mode = mode
 
-        self.start = time.monotonic()
-        self.fired_time_triggers = set()
+        self.start = time.time()
+        self.fired_triggers = set()
 
     def forward_output_and_handle_input(self):
         for line in self.proc.stdout:
@@ -49,20 +50,31 @@ class ProcessHandler:
 
             # string triggers
             for pattern, response in self.triggers.items():
-                if isinstance(pattern, str) and pattern in line:
+                if (
+                    isinstance(pattern, str)
+                    and pattern in line
+                    and pattern not in self.fired_triggers
+                ):
+                    self.fired_triggers.add(pattern)
                     if self.proc.stdin:
                         self.proc.stdin.write(response)
                         self.proc.stdin.flush()
+                        sys.stdout.write(
+                            f"{self.color}[{self.name}]{COLORS['reset']} Fired string trigger '{pattern}': {response.strip()}\n"
+                        )
 
             # time-based triggers
-            now = time.monotonic() - self.start
+            now = time.time() - self.start
             for pattern, response in self.triggers.items():
                 if (
                     isinstance(pattern, (int, float))
                     and pattern <= now
-                    and pattern not in self.fired_time_triggers
+                    and pattern not in self.fired_triggers
                 ):
-                    self.fired_time_triggers.add(pattern)
+                    sys.stdout.write(
+                        f"{self.color}[{self.name}]{COLORS['reset']} Fired time trigger at {now:.1f}s: {response.strip()}\n"
+                    )
+                    self.fired_triggers.add(pattern)
                     if self.proc.stdin:
                         self.proc.stdin.write(response)
                         self.proc.stdin.flush()
@@ -71,8 +83,25 @@ class ProcessHandler:
 
 
 def main():
-    # List of processes to launch
-    app: Optional[Literal["PerceiveSemantix", "DynaMem"]] = None
+    parser = argparse.ArgumentParser(
+        description="Launch multiple helper processes and stop after an optional timeout."
+    )
+    parser.add_argument(
+        "--max-runtime",
+        type=float,
+        default=None,
+        help="Maximum runtime in seconds after which all launched processes are stopped.",
+    )
+    parser.add_argument(
+        "--app",
+        type=str,
+        default=None,
+        choices=["PerceiveSemantix", "DynaMem"],
+        help="Application to run (PerceiveSemantix or DynaMem). If not provided, only IsaacSim is launched.",
+    )
+    args = parser.parse_args()
+    max_runtime = args.max_runtime
+    app: Optional[Literal["PerceiveSemantix", "DynaMem"]] = args.app
 
     processes = [
         {
@@ -86,7 +115,7 @@ def main():
             "cwd": "/home/benni/repos/stretch_isaac/",
             "color": COLORS["red"],
             "triggers": {},
-            "output": OutMode.DISABLED,
+            "output": OutMode.CONSOLE,
         },
     ]
 
@@ -143,6 +172,8 @@ def main():
                     "publishing_rate_background_pointcloud:=0.0",
                     "-p",
                     "objects/point_cloud/publishing_rate:=0.0",
+                    "-p",
+                    "occupancy_map/publishing_rate:=0.5",
                 ],
                 "cwd": "/home/benni/repos/bringup_active_mapmaintenance/perceive_semantix/",
                 "color": COLORS["blue"],
@@ -162,8 +193,23 @@ def main():
                 "cwd": "/home/benni/repos/bringup_active_mapmaintenance/stretch_mpc/",
                 "color": COLORS["yellow"],
                 "triggers": {},
-                "output": OutMode.DISABLED,
+                "output": OutMode.CONSOLE,
             },
+            # {
+            #     "name": "NavigationGoalActionClient",
+            #     "cmd": [
+            #         "pixi",
+            #         "run",
+            #         "ros2",
+            #         "run",
+            #         "stretch_mpc_ros",
+            #         "navigation_goal_action_client",
+            #     ],
+            #     "cwd": "/home/benni/repos/bringup_active_mapmaintenance/stretch_mpc/",
+            #     "color": COLORS["green"],
+            #     "triggers": {},
+            #     "output": OutMode.CONSOLE,
+            # },
             {
                 "name": "MainCoordinator",
                 "cmd": [
@@ -176,8 +222,10 @@ def main():
                 ],
                 "cwd": "/home/benni/repos/bringup_active_mapmaintenance/offline_bringup_active_mapmaintenance/",
                 "color": COLORS["green"],
-                "triggers": {10.0: "explore\n"},
-                "output": OutMode.CONSOLE,
+                "triggers": {
+                    "What would you like to do? (type 'maintain'": "explore\n"
+                },
+                "output": OutMode.DISABLED,
             },
         ]
     else:
@@ -195,8 +243,7 @@ def main():
             )
             sys.exit(1)
 
-    running = []
-
+    running_processes = []
     for p in processes:
         proc = subprocess.Popen(
             p["cmd"],
@@ -215,14 +262,37 @@ def main():
         t.daemon = True
         t.start()
 
-        running.append(proc)
+        running_processes.append(proc)
+
+    def stop_processes(procs):
+        sys.stdout.write("Stopping processes...\n")
+        for proc in procs:
+            try:
+                proc.terminate()
+            except Exception as e:
+                sys.stderr.write(f"Error terminating process: {e}\n")
+
+    def timeout_watcher(procs, timeout: float):
+        time.sleep(timeout)
+        sys.stdout.write(
+            f"Maximum runtime of {timeout} seconds reached. Terminating processes.\n"
+        )
+        stop_processes(procs)
+
+    # If max runtime was provided, start watcher thread
+    if max_runtime is not None:
+        w = threading.Thread(
+            target=timeout_watcher, args=(running_processes, max_runtime)
+        )
+        w.daemon = True
+        w.start()
 
     # Wait for all to finish
     try:
-        for proc in running:
+        for proc in running_processes:
             proc.wait()
     except KeyboardInterrupt:
-        for proc in running:
+        for proc in running_processes:
             proc.terminate()
 
 
