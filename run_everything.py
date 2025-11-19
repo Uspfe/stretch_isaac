@@ -47,7 +47,7 @@ class ProcessHandler:
         for line in self.proc.stdout:
             if self.mode == OutMode.CONSOLE:
                 prefix = f"{self.color}[{self.name}]{COLORS['reset']} "
-                sys.stdout.write(prefix + line)
+                sys.stdout.write(prefix + line.rstrip() + "\n\r")
 
             # string triggers
             for pattern, response in self.triggers.items():
@@ -137,7 +137,7 @@ def main():
                 "cwd": "/home/benni/repos/stretch_ai/docker",
                 "color": COLORS["yellow"],
                 "triggers": {},
-                "output": OutMode.CONSOLE,
+                "output": OutMode.DISABLED,
             },
             {
                 "name": "DynaMem",
@@ -149,10 +149,16 @@ def main():
                     "stretch.app.run_dynamem",
                     "--robot_ip",
                     "127.0.0.1",
+                    "--output-path",
+                    "exploration/hm3d-0",
+                    "--explore-iter",
+                    "40",
                 ],
                 "cwd": "/home/benni/repos/stretch_ai",
                 "color": COLORS["green"],
-                "triggers": {},
+                "triggers": {
+                    "Enter desired mode [E (explore and mapping) / M (Open vocabulary pick and place)]" : "E\n"
+                },
                 "output": OutMode.CONSOLE,
             },
         ]
