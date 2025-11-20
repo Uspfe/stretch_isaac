@@ -45,7 +45,7 @@ class ProcessHandler:
         self.mode = mode
 
         self.start = time.time()
-        self.fired_triggers = set()
+        self.fired_triggers = dict()
 
     def forward_output_and_handle_input(self):
         # Read raw bytes from the PTY master fd so prompts without newlines are shown
@@ -85,13 +85,14 @@ class ProcessHandler:
                     sys.stdout.flush()
 
                 # Check string triggers against the accumulated text
+                now = time.time() - self.start
                 for pattern, response in self.triggers.items():
                     if (
                         isinstance(pattern, str)
                         and pattern in accum
-                        and pattern not in self.fired_triggers
+                        and not self._recently_fired(pattern, now)
                     ):
-                        self.fired_triggers.add(pattern)
+                        self.fired_triggers[pattern] = now
                         self._write_to_input(response)
                         if self.mode == OutMode.CONSOLE:
                             sys.stdout.write(
@@ -103,6 +104,15 @@ class ProcessHandler:
                 os.close(self.master_fd)
             except Exception:
                 pass
+
+    def _recently_fired(
+        self, pattern: Union[str, float], now: float, cooldown: float = 2.0
+    ) -> bool:
+        """Check if a trigger was fired within the cooldown period."""
+        if pattern not in self.fired_triggers:
+            return False
+        last_fired = self.fired_triggers[pattern]
+        return now - last_fired < cooldown
 
     def _write_to_input(self, response: str):
         try:
@@ -118,13 +128,13 @@ class ProcessHandler:
             if (
                 isinstance(pattern, (int, float))
                 and pattern <= now
-                and pattern not in self.fired_triggers
+                and not self._recently_fired(pattern, now, cooldown=float("inf"))
             ):
                 if self.mode == OutMode.CONSOLE:
                     sys.stdout.write(
                         f"{self.color}[{self.name}]{COLORS['reset']} Fired time trigger at {now:.1f}s: {response.strip()}\n"
                     )
-                self.fired_triggers.add(pattern)
+                self.fired_triggers[pattern] = now
                 self._write_to_input(response)
 
 
@@ -278,7 +288,7 @@ def main():
                     "--robot_ip",
                     "127.0.0.1",
                     "--output-path",
-                    "exploration/hm3d-0",
+                    "../../../datasets/sim_results/dynamem/hm3d-0/exploration",
                     "--explore-iter",
                     "40",
                 ],

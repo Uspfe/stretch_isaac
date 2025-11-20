@@ -67,7 +67,7 @@ def main(simulation_app):
 
     world = World()
     ground_plane = world.scene.add_ground_plane(
-        prim_path=root_prim + "/defaultGroundPlane", z_position=0.02
+        prim_path=root_prim + "/defaultGroundPlane", z_position=0.05
     )
     hide_prim(world.stage, ground_plane.prim_path)
 
