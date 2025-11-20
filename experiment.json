@@ -1,0 +1,30 @@
+{
+    "experiments": [
+        {
+            "name": "kujiale_0003_explore",
+            "scene": "/home/benni/datasets/InteriorAgent/kujiale_0003/kujiale_0003.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "explore"
+            },
+            "max_runtime": 100.0
+        },
+        {
+            "name": "kujiale_0003_desk",
+            "scene": "/home/benni/datasets/InteriorAgent/kujiale_0003/kujiale_0003.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "search",
+                "label": "desk",
+                "position": [
+                    -1.0,
+                    1.45,
+                    0.5
+                ],
+                "asset": "plate"
+            },
+            "max_runtime": 180.0,
+            "initialmap_experiment": "kujiale_0003_explore"
+        }
+    ]
+}
