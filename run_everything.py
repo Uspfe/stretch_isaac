@@ -7,7 +7,7 @@ import sys
 import threading
 import time
 from enum import Enum
-from typing import Literal, Optional, Union
+from typing import Any, Literal, Optional, Union
 
 
 class OutMode(Enum):
@@ -30,7 +30,7 @@ class ProcessHandler:
     def __init__(
         self,
         proc,
-        master_fd,
+        master_fd: int,
         name: str,
         color: str,
         triggers: dict[Union[str, float], str],
@@ -92,26 +92,27 @@ class ProcessHandler:
                         and pattern not in self.fired_triggers
                     ):
                         self.fired_triggers.add(pattern)
-                        try:
-                            os.write(self.master_fd, response.encode())
-                            if self.mode == OutMode.CONSOLE:
-                                sys.stdout.write(
-                                    f"{prefix}Fired string trigger '{pattern}': {response.strip()}\n"
-                                )
-                                sys.stdout.flush()
-                        except Exception:
-                            pass
+                        self._write_to_input(response)
+                        if self.mode == OutMode.CONSOLE:
+                            sys.stdout.write(
+                                f"{prefix}Fired string trigger '{pattern}': {response.strip()}\n"
+                            )
+                            sys.stdout.flush()
         finally:
             try:
                 os.close(self.master_fd)
             except Exception:
                 pass
 
+    def _write_to_input(self, response: str):
+        try:
+            os.write(self.master_fd, response.encode())
+        except Exception:
+            pass
+
     def handle_time_triggers(self):
         if self.proc.poll() is not None:
             return  # process has exited
-        if getattr(self, "master_fd", None) is None:
-            return
         now = time.time() - self.start
         for pattern, response in self.triggers.items():
             if (
@@ -124,10 +125,93 @@ class ProcessHandler:
                         f"{self.color}[{self.name}]{COLORS['reset']} Fired time trigger at {now:.1f}s: {response.strip()}\n"
                     )
                 self.fired_triggers.add(pattern)
-                try:
-                    os.write(self.master_fd, response.encode())
-                except Exception:
-                    pass
+                self._write_to_input(response)
+
+
+def launch_processes(
+    processes: dict[str, Any],
+) -> tuple[list[subprocess.Popen], list[ProcessHandler]]:
+    for p in processes:
+        cwd = p.get("cwd")
+        if not cwd:
+            continue
+        if not os.path.isdir(cwd):
+            sys.stderr.write(
+                f"Error: cwd for process '{p.get('name', '<unknown>')}' does not exist: {cwd}\n"
+            )
+            sys.exit(1)
+
+    running_processes = []
+    process_handlers = []
+    for p in processes:
+        master_fd, slave_fd = pty.openpty()
+        proc = subprocess.Popen(
+            p["cmd"],
+            stdin=slave_fd,
+            stdout=slave_fd,
+            stderr=subprocess.STDOUT,
+            cwd=p["cwd"],
+            preexec_fn=os.setsid,
+            close_fds=True,
+            text=False,
+        )
+        try:
+            os.close(slave_fd)
+        except Exception:
+            pass
+
+        # Launch thread to read output from the master fd
+        handler = ProcessHandler(
+            proc, master_fd, p["name"], p["color"], p["triggers"], p["output"]
+        )
+        t = threading.Thread(target=handler.forward_output_and_handle_input)
+        t.daemon = True
+        t.start()
+
+        process_handlers.append(handler)
+        running_processes.append(proc)
+    return running_processes, process_handlers
+
+
+def terminate_processes(procs, timeout=2):
+    """
+    Terminate a list of subprocesses reliably.
+    - First sends SIGTERM.
+    - Waits up to `timeout` seconds.
+    - Sends SIGKILL to any remaining processes.
+    """
+    pids = [proc.pid for proc in procs]
+    gpids = []
+    for pid in pids:
+        try:
+            gpid = os.getpgid(pid)
+            gpids.append(gpid)
+        except ProcessLookupError:
+            pass
+    all_pids = pids + gpids
+
+    for id in all_pids:
+        try:
+            os.killpg(id, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+
+    # Wait for processes to exit gracefully
+    print("Waiting for processes to terminate...")
+    end_time = time.time() + timeout
+    for proc in procs:
+        while proc.poll() is None and time.time() < end_time:
+            time.sleep(0.05)
+
+    # Force kill any remaining processes
+    print(
+        f"Force killing remaining processes... (overall pids {pids}, and gpids {gpids})"
+    )
+    for id in all_pids:
+        try:
+            os.killpg(id, signal.SIGKILL)
+        except ProcessLookupError as e:
+            print(f"Process already exited: {e}")
 
 
 def main():
@@ -266,21 +350,6 @@ def main():
                 "triggers": {},
                 "output": OutMode.DISABLED,
             },
-            # {
-            #     "name": "NavigationGoalActionClient",
-            #     "cmd": [
-            #         "pixi",
-            #         "run",
-            #         "ros2",
-            #         "run",
-            #         "stretch_mpc_ros",
-            #         "navigation_goal_action_client",
-            #     ],
-            #     "cwd": "/home/benni/repos/bringup_active_mapmaintenance/stretch_mpc/",
-            #     "color": COLORS["green"],
-            #     "triggers": {},
-            #     "output": OutMode.CONSOLE,
-            # },
             {
                 "name": "MainCoordinator",
                 "cmd": [
@@ -296,70 +365,34 @@ def main():
                 "triggers": triggers,
                 "output": OutMode.CONSOLE,
             },
+            # {
+            #     "name": "NavigationGoalActionClient",
+            #     "cmd": [
+            #         "pixi",
+            #         "run",
+            #         "ros2",
+            #         "run",
+            #         "stretch_mpc_ros",
+            #         "navigation_goal_action_client",
+            #     ],
+            #     "cwd": "/home/benni/repos/bringup_active_mapmaintenance/stretch_mpc/",
+            #     "color": COLORS["green"],
+            #     "triggers": {},
+            #     "output": OutMode.DISABLED,
+            # },
         ]
     else:
         sys.stderr.write(f"Error: Unknown app '{app}'\n")
         sys.exit(1)
 
-    # Verify that each configured working directory exists
-    for p in processes:
-        cwd = p.get("cwd")
-        if not cwd:
-            continue
-        if not os.path.isdir(cwd):
-            sys.stderr.write(
-                f"Error: cwd for process '{p.get('name', '<unknown>')}' does not exist: {cwd}\n"
-            )
-            sys.exit(1)
-
-    running_processes = []
-    process_handlers = []
-    for p in processes:
-        # Create a pseudo-terminal so the subprocess believes it's attached to a terminal
-        master_fd, slave_fd = pty.openpty()
-
-        proc = subprocess.Popen(
-            p["cmd"],
-            stdin=slave_fd,
-            stdout=slave_fd,
-            stderr=slave_fd,
-            cwd=p["cwd"],
-            preexec_fn=os.setsid,
-            close_fds=True,
-            text=False,
-        )
-
-        # Close the slave fd in the parent; the child has it open.
-        try:
-            os.close(slave_fd)
-        except Exception:
-            pass
-
-        # Launch thread to read output from the master fd
-        handler = ProcessHandler(
-            proc, master_fd, p["name"], p["color"], p["triggers"], p["output"]
-        )
-        t = threading.Thread(target=handler.forward_output_and_handle_input)
-        t.daemon = True
-        t.start()
-
-        process_handlers.append(handler)
-        running_processes.append(proc)
-
-    def stop_processes(procs):
-        sys.stdout.write("Stopping processes...\n")
-        for proc in procs:
-            try:
-                os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
-            except Exception as e:
-                sys.stderr.write(f"Error terminating process: {e}\n")
+    running_processes, process_handlers = launch_processes(processes)
 
     def timeout_watcher(procs, timeout: float):
         time.sleep(timeout)
         sys.stdout.write(
             f"Maximum runtime of {timeout} seconds reached. Terminating processes.\n"
         )
-        stop_processes(procs)
+        terminate_processes(procs)
 
     # If max runtime was provided, start watcher thread
     if max_runtime is not None:
@@ -375,9 +408,11 @@ def main():
             time.sleep(0.1)
             for handler in process_handlers:
                 handler.handle_time_triggers()
-
     except KeyboardInterrupt:
-        stop_processes(running_processes)
+        print("\nStopping processes...")
+    finally:
+        terminate_processes(running_processes, timeout=2)
+        print("All processes terminated.")
 
 
 if __name__ == "__main__":
