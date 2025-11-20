@@ -1,18 +1,21 @@
 # launch Isaac Sim before any other imports
 # default first two lines in any standalone application
 import argparse
+import json
 from pathlib import Path
 from typing import Literal, Union
+import numpy as np
 
 from isaacsim import SimulationApp
 
-app = SimulationApp({"headless": True})  # we can also run as headless.
+app = SimulationApp({"headless": False})  # we can also run as headless.
 
 import omni.kit.actions.core
 from isaacsim.core.api import World
 from isaacsim.core.utils import extensions
 from omni.isaac.core.utils.stage import add_reference_to_stage
 from pxr import Sdf, Usd
+from omni.isaac.core.articulations import Articulation
 
 
 def switch_lighting(mode: Literal["camera", "stage"] = "camera"):
@@ -62,12 +65,39 @@ def show_prim(stage: Usd.Stage, prim_path: str):
     visibility_attribute.Set("inherited")
 
 
+def dump_state(
+    time: float,
+    position: tuple[float, 3],
+    orientation: tuple[float, 4],
+    linear_velocity: tuple[float, 3],
+):
+    data = {
+        "time": time,
+        "position": {"x": position[0], "y": position[1], "z": position[2]},
+        "orientation": {
+            "w": orientation[0],
+            "x": orientation[1],
+            "y": orientation[2],
+            "z": orientation[3],
+        },
+        "linear_velocity": {
+            "vx": linear_velocity[0],
+            "vy": linear_velocity[1],
+            "vz": linear_velocity[2],
+        },
+    }
+    print(json.dumps(data))
+
+
 def main(simulation_app):
     parser = argparse.ArgumentParser(
         description="Run standalone simulation with optional scene selection."
     )
     parser.add_argument(
-        "--scene", type=Path, help="Path to the USD scene file to load."
+        "--scene",
+        type=Union[Path, None],
+        help="Path to the USD scene file to load.",
+        default=None,
     )
     parser.add_argument(
         "--lighting",
@@ -87,20 +117,42 @@ def main(simulation_app):
     ground_plane = world.scene.add_ground_plane(
         prim_path=root_prim + "/defaultGroundPlane", z_position=0.05
     )
-    hide_prim(world.stage, ground_plane.prim_path)
+    if args.scene is not None:
+        hide_prim(world.stage, ground_plane.prim_path)
+        switch_lighting(mode=args.lighting)
+        _scene = add_reference_to_stage(usd_path=str(args.scene), prim_path=root_prim)
+    else:
+        switch_lighting(mode="camera")
 
     # load robot
     stretch_asset_path = "/home/benni/repos/stretch_isaac/importable_stretch.usd"
-    _stretch = add_reference_to_stage(usd_path=stretch_asset_path, prim_path=root_prim)
-
-    switch_lighting(mode=args.lighting)
-    _scene = add_reference_to_stage(usd_path=str(args.scene), prim_path=root_prim)
+    prim_stretch = add_reference_to_stage(
+        usd_path=stretch_asset_path, prim_path=root_prim
+    )
 
     world.reset()
 
+    stretch = Articulation(prim_path=str(prim_stretch.GetPath()) + "/stretch")
+    stretch.initialize()
+
+    print_pose_interval: int = 33
     try:
+        step_count = 0
         while simulation_app.is_running():
             world.step(render=True)  # execute one physics step and one rendering step
+            step_count += 1
+            if step_count == print_pose_interval:
+                step_count = 0
+                position: np.ndarray
+                orientation: np.ndarray
+                position, orientation = stretch.get_world_pose()
+                linear_velocity: np.ndarray = stretch.get_linear_velocity()
+                dump_state(
+                    float(world.current_time),
+                    position.tolist(),
+                    orientation.tolist(),
+                    linear_velocity.tolist(),
+                )
     except KeyboardInterrupt:
         print("Exiting simulation...")
 
