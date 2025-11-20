@@ -65,11 +65,6 @@ class ProcessHandler:
                 except Exception:
                     text = ""
 
-                accum += text
-                # Keep accum bounded
-                if len(accum) > 8192:
-                    accum = accum[-8192:]
-
                 # Print text to stdout, adding prefix at line starts
                 if self.mode == OutMode.CONSOLE:
                     parts = text.split("\n")
@@ -85,6 +80,7 @@ class ProcessHandler:
                     sys.stdout.flush()
 
                 # Check string triggers against the accumulated text
+                accum += text
                 now = time.time() - self.start
                 for pattern, response in self.triggers.items():
                     if (
@@ -99,6 +95,8 @@ class ProcessHandler:
                                 f"{prefix}Fired string trigger '{pattern}': {response.strip()}\n"
                             )
                             sys.stdout.flush()
+
+                accum = accum.splitlines(keepends=False)[-1]
         finally:
             try:
                 os.close(self.master_fd)
@@ -257,6 +255,14 @@ def main():
                 "run",
                 "python",
                 "standalone_sim.py",
+                "--scene",
+                "/home/benni/datasets/InteriorAgent/kujiale_0003/kujiale_0003.usda",
+                "--lighting",
+                "stage",
+                # "--scene",
+                # "/home/benni/datasets/hm3d-minival-glb-v0.2/00800-TEEsavR23oF/TEEsavR23oF_collision.usd",
+                # "--lighting",
+                # "camera",
             ],
             "cwd": "/home/benni/repos/stretch_isaac/",
             "color": COLORS["red"],
@@ -268,6 +274,35 @@ def main():
     if app is None:
         pass
     elif app.lower() == "dynamem":
+        if args.explore:
+            options = [
+                "--output-path",
+                "../../../datasets/sim_results/dynamem/kujiale_0003/exploration",
+                "--explore-iter",
+                "10",
+            ]
+            # in exploration mode the map is not saved, so instead we search for an object (volcano) which is never present
+            triggers = {
+                "Enter desired mode [E (explore and mapping) / M (Open vocabulary pick and place)]": "M\n",
+                "Enter the target object:": "volcano\n",
+                "Enter the target receptacle:": "volcano\n",
+                "Do you want to run navigation? [Y/n]:": "Y\n",
+                "Do you want to run picking? [Y/n]:": "n\n",
+                "Do you want to run placement? [Y/n]:": "n\n",
+            }
+        else:
+            options = [
+                "--input-path",
+                "/home/benni/datasets/sim_results/dynamem/hm3d-0/exploration.pkl",
+            ]
+            triggers = {
+                "Enter desired mode [E (explore and mapping) / M (Open vocabulary pick and place)]": "M\n",
+                "Enter the target object:": "door mat\n",
+                "Enter the target receptacle:": "table\n",
+                "Do you want to run navigation? [Y/n]:": "Y\n",
+                "Do you want to run picking? [Y/n]:": "n\n",
+                "Do you want to run placement? [Y/n]:": "n\n",
+            }
         processes += [
             {
                 "name": "Ros2BridgeServer",
@@ -287,16 +322,11 @@ def main():
                     "stretch.app.run_dynamem",
                     "--robot_ip",
                     "127.0.0.1",
-                    "--output-path",
-                    "../../../datasets/sim_results/dynamem/hm3d-0/exploration",
-                    "--explore-iter",
-                    "40",
+                    *options,
                 ],
                 "cwd": "/home/benni/repos/stretch_ai",
                 "color": COLORS["green"],
-                "triggers": {
-                    "Enter desired mode [E (explore and mapping) / M (Open vocabulary pick and place)]": "E\n"
-                },
+                "triggers": triggers,
                 "output": OutMode.CONSOLE,
             },
         ]

@@ -1,14 +1,17 @@
 # launch Isaac Sim before any other imports
 # default first two lines in any standalone application
+import argparse
+from pathlib import Path
 from typing import Literal, Union
+
 from isaacsim import SimulationApp
 
-app = SimulationApp({"headless": False})  # we can also run as headless.
+app = SimulationApp({"headless": True})  # we can also run as headless.
 
+import omni.kit.actions.core
 from isaacsim.core.api import World
 from isaacsim.core.utils import extensions
 from omni.isaac.core.utils.stage import add_reference_to_stage
-import omni.kit.actions.core
 from pxr import Sdf, Usd
 
 
@@ -60,6 +63,21 @@ def show_prim(stage: Usd.Stage, prim_path: str):
 
 
 def main(simulation_app):
+    parser = argparse.ArgumentParser(
+        description="Run standalone simulation with optional scene selection."
+    )
+    parser.add_argument(
+        "--scene", type=Path, help="Path to the USD scene file to load."
+    )
+    parser.add_argument(
+        "--lighting",
+        type=str,
+        choices=["camera", "stage"],
+        default="stage",
+        help="Lighting mode to use.",
+    )
+    args = parser.parse_args()
+
     extensions.enable_extension("isaacsim.ros2.bridge")
     simulation_app.update()
 
@@ -73,19 +91,10 @@ def main(simulation_app):
 
     # load robot
     stretch_asset_path = "/home/benni/repos/stretch_isaac/importable_stretch.usd"
-    stretch = add_reference_to_stage(usd_path=stretch_asset_path, prim_path=root_prim)
+    _stretch = add_reference_to_stage(usd_path=stretch_asset_path, prim_path=root_prim)
 
-    use_matterport3d: bool = True
-
-    if use_matterport3d:
-        scene_asset_path = "/home/benni/datasets/hm3d-minival-glb-v0.2/00800-TEEsavR23oF/TEEsavR23oF_collision.usd"
-        switch_lighting("camera")
-    else:
-        scene_asset_path = (
-            "/home/benni/datasets/InteriorAgent/kujiale_0003/kujiale_0003.usda"
-        )
-        switch_lighting("stage")
-    scene = add_reference_to_stage(usd_path=scene_asset_path, prim_path=root_prim)
+    switch_lighting(mode=args.lighting)
+    _scene = add_reference_to_stage(usd_path=str(args.scene), prim_path=root_prim)
 
     world.reset()
 
