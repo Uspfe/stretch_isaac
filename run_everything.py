@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 import pty
 import signal
@@ -25,6 +26,27 @@ COLORS = {
     "reset": "\033[0m",
 }
 
+STATE_LOCK = threading.Lock()
+STATE_LIST: list = []
+
+def parse_sim_state(text: str):
+    """Try to deserialize JSON from text; return state tuple or None if invalid."""
+    global STATE_LOCK, STATE_LIST
+    try:
+        data = json.loads(text)
+        time = data["time"]
+        position = [data["position"]["x"], data["position"]["y"], data["position"]["z"]]
+        orientation = [data["orientation"]["w"], data["orientation"]["x"], data["orientation"]["y"], data["orientation"]["z"]]
+        linear_velocity = [data["linear_velocity"]["vx"], data["linear_velocity"]["vy"], data["linear_velocity"]["vz"]]
+    except (json.JSONDecodeError, KeyError, TypeError):
+        pass
+    else:
+        with STATE_LOCK:
+            STATE_LIST.append((time, position, orientation, linear_velocity))
+
+def print_line(line: str, prefix: str = ""):
+    sys.stdout.write(f"{prefix}{line.strip()}\n")
+
 
 class ProcessHandler:
     def __init__(
@@ -35,6 +57,7 @@ class ProcessHandler:
         color: str,
         triggers: dict[Union[str, float], str],
         mode=OutMode.CONSOLE,
+        line_handlers: list = [],
     ):
         self.proc = proc
         # master_fd is the integer file descriptor for the PTY master
@@ -47,10 +70,13 @@ class ProcessHandler:
         self.start = time.time()
         self.fired_triggers = dict()
 
+        self.prefix = f"{self.color}[{self.name}]{COLORS['reset']} "
+        self.line_handler = line_handlers
+        if self.mode == OutMode.CONSOLE:
+            self.line_handler.append(lambda line: print_line(line, self.prefix))
+
     def forward_output_and_handle_input(self):
         # Read raw bytes from the PTY master fd so prompts without newlines are shown
-        prefix = f"{self.color}[{self.name}]{COLORS['reset']} "
-        at_line_start = True
         accum = ""
         try:
             while True:
@@ -66,18 +92,13 @@ class ProcessHandler:
                     text = ""
 
                 # Print text to stdout, adding prefix at line starts
-                if self.mode == OutMode.CONSOLE:
-                    parts = text.split("\n")
-                    for i, part in enumerate(parts):
-                        if at_line_start:
-                            sys.stdout.write(prefix)
-                        sys.stdout.write(part)
-                        if i < len(parts) - 1:
-                            sys.stdout.write("\n")
-                            at_line_start = True
-                        else:
-                            at_line_start = False
-                    sys.stdout.flush()
+                parts = text.splitlines(keepends=False)
+                for line in parts:
+                    if not line:
+                        continue
+                    for handler in self.line_handler:
+                        handler(line)
+                sys.stdout.flush()
 
                 # Check string triggers against the accumulated text
                 accum += text
@@ -92,7 +113,7 @@ class ProcessHandler:
                         self._write_to_input(response)
                         if self.mode == OutMode.CONSOLE:
                             sys.stdout.write(
-                                f"{prefix}Fired string trigger '{pattern}': {response.strip()}\n"
+                                f"{self.prefix}Fired string trigger '{pattern}': {response.strip()}\n"
                             )
                             sys.stdout.flush()
 
@@ -130,7 +151,7 @@ class ProcessHandler:
             ):
                 if self.mode == OutMode.CONSOLE:
                     sys.stdout.write(
-                        f"{self.color}[{self.name}]{COLORS['reset']} Fired time trigger at {now:.1f}s: {response.strip()}\n"
+                        f"{self.prefix}Fired time trigger at {now:.1f}s: {response.strip()}\n"
                     )
                 self.fired_triggers[pattern] = now
                 self._write_to_input(response)
@@ -170,7 +191,7 @@ def launch_processes(
 
         # Launch thread to read output from the master fd
         handler = ProcessHandler(
-            proc, master_fd, p["name"], p["color"], p["triggers"], p["output"]
+            proc, master_fd, p["name"], p["color"], p["triggers"], p["output"], line_handlers=p.get("line_handlers", [])
         )
         t = threading.Thread(target=handler.forward_output_and_handle_input)
         t.daemon = True
@@ -268,6 +289,7 @@ def main():
             "color": COLORS["red"],
             "triggers": {},
             "output": OutMode.DISABLED,
+            "line_handlers": [parse_sim_state],
         },
     ]
 
@@ -448,6 +470,9 @@ def main():
             time.sleep(0.1)
             for handler in process_handlers:
                 handler.handle_time_triggers()
+            with STATE_LOCK:
+                if STATE_LIST:
+                    print(STATE_LIST[-1])
     except KeyboardInterrupt:
         print("\nStopping processes...")
     finally:

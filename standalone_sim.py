@@ -95,7 +95,7 @@ def main(simulation_app):
     )
     parser.add_argument(
         "--scene",
-        type=Union[Path, None],
+        type=Path,
         help="Path to the USD scene file to load.",
         default=None,
     )
