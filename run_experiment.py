@@ -186,6 +186,11 @@ class ProcessHandler:
 def launch_processes(
     processes: dict[str, Any],
 ) -> tuple[list[subprocess.Popen], list[ProcessHandler]]:
+    names = [p.get("name") for p in processes]
+    if "DynaMem" in names:
+        subprocess.run(["rm", "-r", "/home/benni/repos/stretch_ai/.pixi"], check=False)
+        print("Removed .pixi directory before launching DynaMem.")
+
     for p in processes:
         cwd = p.get("cwd")
         if not cwd:
@@ -288,6 +293,7 @@ def check_existing_record(record: str, output_file: Path) -> bool:
 
 def store_results(
     record: str,
+    app: str,
     output_file: Path,
     experiment: dict,
     output_root: Path,
@@ -312,6 +318,7 @@ def store_results(
 
     new_record = {
         "name": record,
+        "app": app,
         "experiment": experiment,
         "state_trajectory_file": state_file.resolve().absolute().as_posix(),
         "time_to_complete": time_to_complete,
@@ -377,9 +384,11 @@ def build_proccesses(
 
     if app.lower() == "dynamem":
         if do_explore:
+            dynamem_log = Path("/home/benni/repos/stretch_ai/dynamem_log")
+            rel_out_dir = Path(os.path.relpath(output_dir, dynamem_log))
             options = [
                 "--output-path",
-                str(output_dir),
+                str(rel_out_dir),
                 "--explore-iter",
                 "10",
             ]
@@ -578,7 +587,7 @@ def run_expriment(app: Literal["dynamem", "perceivesemantix"], experiment: dict,
     with SUCCESS_FEEDBACK_LOCK:
         SUCCESS_FEEDBACK = SUCCESS_FEEDBACK_DEFAULT
 
-    store_results(record_key, output_file, app, experiment, output_root, state_trajectory, success)
+    store_results(record_key, app, output_file, experiment, output_root, state_trajectory, success)
 
 
 def main():
