@@ -501,7 +501,7 @@ def build_proccesses(
                 "cwd": "/home/benni/repos/bringup_active_mapmaintenance/stretch_mpc/",
                 "color": COLORS["yellow"],
                 "triggers": {},
-                "output": OutMode.DISABLED,
+                "output": OutMode.CONSOLE,
             },
             {
                 "name": "MainCoordinator",
@@ -610,6 +610,8 @@ def main():
         "--app",
         type=str,
         choices=["dynamem", "perceivesemantix"],
+        nargs="+",
+        help="One or more apps to run (e.g. --app dynamem perceivesemantix)",
     )
     parser.add_argument(
         "--out-root",
@@ -622,7 +624,8 @@ def main():
     experiments: dict = json.loads(args.experiment_json.read_text())
 
     for experiment in experiments["experiments"]:
-        run_expriment(args.app, experiment, args.out_root)
+        for app in args.app:
+            run_expriment(app, experiment, args.out_root)
 
 
 if __name__ == "__main__":
