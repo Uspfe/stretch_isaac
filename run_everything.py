@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 import pty
+import select
 import signal
 import subprocess
 import sys
@@ -32,6 +33,7 @@ STATE_LIST: list = []
 SUCCESS_FEEDBACK_LOCK = threading.Lock()
 SUCCESS_FEEDBACK: Optional[str] = None
 
+
 def parse_sim_state(text: str):
     """Try to deserialize JSON from text; return state tuple or None if invalid."""
     global STATE_LOCK, STATE_LIST
@@ -39,13 +41,19 @@ def parse_sim_state(text: str):
         data = json.loads(text)
         time = data["time"]
         position = [data["position"]["x"], data["position"]["y"], data["position"]["z"]]
-        orientation = [data["orientation"]["w"], data["orientation"]["x"], data["orientation"]["y"], data["orientation"]["z"]]
+        orientation = [
+            data["orientation"]["w"],
+            data["orientation"]["x"],
+            data["orientation"]["y"],
+            data["orientation"]["z"],
+        ]
         linear_velocity = [data["linear_velocity"]["vx"], data["linear_velocity"]["vy"], data["linear_velocity"]["vz"]]
     except (json.JSONDecodeError, KeyError, TypeError):
         pass
     else:
         with STATE_LOCK:
             STATE_LIST.append((time, position, orientation, linear_velocity))
+
 
 def print_line(line: str, prefix: str = ""):
     sys.stdout.write(f"{prefix}{line.strip()}\n")
@@ -78,17 +86,23 @@ class ProcessHandler:
         if self.mode == OutMode.CONSOLE:
             self.line_handler.append(lambda line: print_line(line, self.prefix))
 
+        self.stop_requested = False
+
     def forward_output_and_handle_input(self):
         # Read raw bytes from the PTY master fd so prompts without newlines are shown
         accum = ""
         try:
-            while True:
+            while True and not self.stop_requested:
+                r, _, _ = select.select([self.master_fd], [], [], 0.2)
+                if self.master_fd not in r:
+                    continue
                 try:
                     data = os.read(self.master_fd, 1024)
-                except OSError:
-                    break
+                except OSError as e:
+                    print(f"Exception reading from master fd for process {self.name}: {e}")
+                    continue
                 if not data:
-                    break
+                    continue
                 try:
                     text = data.decode("utf-8", errors="ignore")
                 except Exception:
@@ -107,29 +121,25 @@ class ProcessHandler:
                 accum += text
                 now = time.time() - self.start
                 for pattern, response in self.triggers.items():
-                    if (
-                        isinstance(pattern, str)
-                        and pattern in accum
-                        and not self._recently_fired(pattern, now)
-                    ):
+                    if isinstance(pattern, str) and pattern in accum and not self._recently_fired(pattern, now):
                         self.fired_triggers[pattern] = now
                         self._write_to_input(response)
                         if self.mode == OutMode.CONSOLE:
-                            sys.stdout.write(
-                                f"{self.prefix}Fired string trigger '{pattern}': {response.strip()}\n"
-                            )
+                            sys.stdout.write(f"{self.prefix}Fired string trigger '{pattern}': {response.strip()}\n")
                             sys.stdout.flush()
 
                 accum = accum.splitlines(keepends=False)[-1]
+        except Exception as e:
+            print(f"Exception in ProcessHandler for process {self.name}: {e}")
         finally:
             try:
                 os.close(self.master_fd)
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"Failed to close master fd for process {self.name}: {e}")
+            else:
+                print(f"Closed master fd for process {self.name}")
 
-    def _recently_fired(
-        self, pattern: Union[str, float], now: float, cooldown: float = 2.0
-    ) -> bool:
+    def _recently_fired(self, pattern: Union[str, float], now: float, cooldown: float = 2.0) -> bool:
         """Check if a trigger was fired within the cooldown period."""
         if pattern not in self.fired_triggers:
             return False
@@ -153,9 +163,7 @@ class ProcessHandler:
                 and not self._recently_fired(pattern, now, cooldown=float("inf"))
             ):
                 if self.mode == OutMode.CONSOLE:
-                    sys.stdout.write(
-                        f"{self.prefix}Fired time trigger at {now:.1f}s: {response.strip()}\n"
-                    )
+                    sys.stdout.write(f"{self.prefix}Fired time trigger at {now:.1f}s: {response.strip()}\n")
                 self.fired_triggers[pattern] = now
                 self._write_to_input(response)
 
@@ -163,18 +171,22 @@ class ProcessHandler:
 def launch_processes(
     processes: dict[str, Any],
 ) -> tuple[list[subprocess.Popen], list[ProcessHandler]]:
+    names = [p.get("name") for p in processes]
+    if "DynaMem" in names:
+        subprocess.run(["rm", "-r", "/home/benni/repos/stretch_ai/.pixi"], check=False)
+        print("Removed .pixi directory before launching DynaMem.")
+
     for p in processes:
         cwd = p.get("cwd")
         if not cwd:
             continue
         if not os.path.isdir(cwd):
-            sys.stderr.write(
-                f"Error: cwd for process '{p.get('name', '<unknown>')}' does not exist: {cwd}\n"
-            )
+            sys.stderr.write(f"Error: cwd for process '{p.get('name', '<unknown>')}' does not exist: {cwd}\n")
             sys.exit(1)
 
     running_processes = []
     process_handlers = []
+    handler_threads = []
     for p in processes:
         master_fd, slave_fd = pty.openpty()
         proc = subprocess.Popen(
@@ -190,7 +202,7 @@ def launch_processes(
         try:
             os.close(slave_fd)
         except Exception:
-            pass
+            print("Failed to close slave fd")
 
         # Launch thread to read output from the master fd
         handler = ProcessHandler(
@@ -199,19 +211,25 @@ def launch_processes(
         t = threading.Thread(target=handler.forward_output_and_handle_input)
         t.daemon = True
         t.start()
+        handler_threads.append(t)
 
         process_handlers.append(handler)
         running_processes.append(proc)
-    return running_processes, process_handlers
+    return running_processes, process_handlers, handler_threads
 
 
-def terminate_processes(procs, timeout=2):
+def terminate_processes(procs, handlers, handler_threads, timeout=2):
     """
     Terminate a list of subprocesses reliably.
     - First sends SIGTERM.
     - Waits up to `timeout` seconds.
     - Sends SIGKILL to any remaining processes.
     """
+    for h in handlers:
+        h.stop_requested = True
+    for t in handler_threads:
+        t.join(timeout=timeout)
+
     pids = [proc.pid for proc in procs]
     gpids = []
     for pid in pids:
@@ -230,15 +248,13 @@ def terminate_processes(procs, timeout=2):
 
     # Wait for processes to exit gracefully
     print("Waiting for processes to terminate...")
-    end_time = time.time() + timeout
+    end_time = time.time() + 10.0
     for proc in procs:
         while proc.poll() is None and time.time() < end_time:
             time.sleep(0.05)
 
     # Force kill any remaining processes
-    print(
-        f"Force killing remaining processes... (overall pids {pids}, and gpids {gpids})"
-    )
+    print(f"Force killing remaining processes... (overall pids {pids}, and gpids {gpids})")
     for id in all_pids:
         try:
             os.killpg(id, signal.SIGKILL)
@@ -247,9 +263,7 @@ def terminate_processes(procs, timeout=2):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Launch multiple helper processes and stop after an optional timeout."
-    )
+    parser = argparse.ArgumentParser(description="Launch multiple helper processes and stop after an optional timeout.")
     parser.add_argument(
         "--max-runtime",
         type=float,
@@ -283,10 +297,6 @@ def main():
                 "/home/benni/datasets/InteriorAgent/kujiale_0003/kujiale_0003.usda",
                 "--lighting",
                 "stage",
-                # "--scene",
-                # "/home/benni/datasets/hm3d-minival-glb-v0.2/00800-TEEsavR23oF/TEEsavR23oF_collision.usd",
-                # "--lighting",
-                # "camera",
             ],
             "cwd": "/home/benni/repos/stretch_isaac/",
             "color": COLORS["red"],
@@ -362,11 +372,7 @@ def main():
             if not args.explore
             else '""'
         )
-        triggers = (
-            {"What would you like to do? (type 'maintain'": "explore\n"}
-            if args.explore
-            else {15.0: "sink\n"}
-        )
+        triggers = {"What would you like to do? (type 'maintain'": "explore\n"} if args.explore else {15.0: "sink\n"}
         processes += [
             {
                 "name": "PerceiveSemantix",
@@ -450,19 +456,17 @@ def main():
         sys.stderr.write(f"Error: Unknown app '{app}'\n")
         sys.exit(1)
 
-    running_processes, process_handlers = launch_processes(processes)
+    running_processes, process_handlers, handler_threads = launch_processes(processes)
 
-    def timeout_watcher(procs, timeout: float):
+    def timeout_watcher(procs, handlers, handler_threads, timeout: float):
         time.sleep(timeout)
-        sys.stdout.write(
-            f"Maximum runtime of {timeout} seconds reached. Terminating processes.\n"
-        )
-        terminate_processes(procs)
+        sys.stdout.write(f"Maximum runtime of {timeout} seconds reached. Terminating processes.\n")
+        terminate_processes(procs, handlers, handler_threads)
 
     # If max runtime was provided, start watcher thread
     if max_runtime is not None:
         w = threading.Thread(
-            target=timeout_watcher, args=(running_processes, max_runtime)
+            target=timeout_watcher, args=(running_processes, process_handlers, handler_threads, max_runtime)
         )
         w.daemon = True
         w.start()
@@ -476,7 +480,7 @@ def main():
     except KeyboardInterrupt:
         print("\nStopping processes...")
     finally:
-        terminate_processes(running_processes, timeout=2)
+        terminate_processes(running_processes, process_handlers, handler_threads, timeout=2)
         print("All processes terminated.")
 
 
