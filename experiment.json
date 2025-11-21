@@ -31,6 +31,27 @@
             },
             "max_runtime": 300.0,
             "initialmap_experiment": "00801-HaxA7YrQdEC_explore"
+        },
+        {
+            "name": "00802-wcojb4TFT35_explore",
+            "scene": "/home/benni/datasets/hm3d-minival-glb-v0.2/00802-wcojb4TFT35/wcojb4TFT35_collision.usd",
+            "lighting": "camera",
+            "goal": {
+                "task": "explore"
+            },
+            "max_runtime": 600.0
+        },
+        {
+            "name": "00802-wcojb4TFT35_printer",
+            "scene": "/home/benni/datasets/hm3d-minival-glb-v0.2/00802-wcojb4TFT35/wcojb4TFT35_collision.usd",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "printer",
+                "position": [2.06514, 4.08352, 0.86]
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "00802-wcojb4TFT35_explore"
         }
     ]
 }

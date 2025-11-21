@@ -133,7 +133,7 @@ def main(simulation_app):
         switch_lighting(mode="camera")
 
     # load robot
-    stretch_asset_path = "/home/benni/repos/stretch_isaac/importable_stretch.usd"
+    stretch_asset_path = "/home/benni/repos/stretch_isaac/importable_stretch_no_arm_collider.usd"
     prim_stretch = add_reference_to_stage(usd_path=stretch_asset_path, prim_path=root_prim)
 
     for id, asset in enumerate(args.asset):
