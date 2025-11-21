@@ -32,9 +32,9 @@ COLORS = {
 STATE_LOCK = threading.Lock()
 STATE_LIST: list = []
 
-SUCCESS_FEEDBACK_DEFAULT: Optional[str] = "SUCCESS"
+SUCCESS_FEEDBACK_DEFAULT: str = ""
 SUCCESS_FEEDBACK_LOCK = threading.Lock()
-SUCCESS_FEEDBACK: Optional[str] = SUCCESS_FEEDBACK_DEFAULT
+SUCCESS_FEEDBACK: str = SUCCESS_FEEDBACK_DEFAULT
 
 
 def parse_sim_state(text: str):
@@ -142,10 +142,18 @@ class ProcessHandler:
                 for pattern, response in self.triggers.items():
                     if isinstance(pattern, str) and pattern in accum and not self._recently_fired(pattern, now):
                         self.fired_triggers[pattern] = now
-                        self._write_to_input(response)
-                        if self.mode == OutMode.CONSOLE:
-                            sys.stdout.write(f"{self.prefix}Fired string trigger '{pattern}': {response.strip()}\n")
-                            sys.stdout.flush()
+                        if "SUCCESS" in response:
+                            global SUCCESS_FEEDBACK_LOCK, SUCCESS_FEEDBACK
+                            with SUCCESS_FEEDBACK_LOCK:
+                                SUCCESS_FEEDBACK = "SUCCESS"
+                            if self.mode == OutMode.CONSOLE:
+                                sys.stdout.write(f"{self.prefix}SUCCESS condition detected!\n")
+                                sys.stdout.flush()
+                        else:
+                            self._write_to_input(response)
+                            if self.mode == OutMode.CONSOLE:
+                                sys.stdout.write(f"{self.prefix}Fired string trigger '{pattern}': {response.strip()}\n")
+                                sys.stdout.flush()
 
                 accum = accum.splitlines(keepends=False)[-1]
         finally:
@@ -411,7 +419,7 @@ def build_proccesses(
                 "Enter the target object:": f"{experiment['goal']['label']}\n",
                 "Enter the target receptacle:": "table\n",
                 "Do you want to run navigation? [Y/n]:": "Y\n",
-                "Do you want to run picking? [Y/n]:": "n\n",
+                "Do you want to run picking? [Y/n]:": "SUCCESS\n",
                 "Do you want to run placement? [Y/n]:": "n\n",
             }
         processes += [
@@ -444,6 +452,7 @@ def build_proccesses(
     elif app.lower() == "perceivesemantix":
         initial_scene_path = str(input_path) if not do_explore else '""'
         triggers = {15.0: "explore\n"} if do_explore else {15.0: f"{experiment['goal']['label']}\n"}
+        triggers[" found at "] = "SUCCESS\n"
         processes += [
             {
                 "name": "PerceiveSemantix",
@@ -566,7 +575,7 @@ def run_expriment(app: Literal["dynamem", "perceivesemantix"], experiment: dict,
                 handler.handle_time_triggers()
             if not do_explore and success_monitor(
                 goal_position,
-                1.0,
+                2.0,
             ):
                 success = True
                 sys.stdout.write("Success condition met. Terminating processes.\n")
