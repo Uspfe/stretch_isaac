@@ -1,30 +1,36 @@
 {
     "experiments": [
         {
-            "name": "kujiale_0003_explore",
-            "scene": "/home/benni/datasets/InteriorAgent/kujiale_0003/kujiale_0003.usda",
-            "lighting": "stage",
+            "name": "00800-TEEsavR23oF_explore",
+            "scene": "/home/benni/datasets/hm3d-minival-glb-v0.2/00800-TEEsavR23oF/TEEsavR23oF_collision.usd",
+            "lighting": "camera",
             "goal": {
                 "task": "explore"
             },
-            "max_runtime": 100.0
+            "max_runtime": 600.0
         },
         {
-            "name": "kujiale_0003_desk",
-            "scene": "/home/benni/datasets/InteriorAgent/kujiale_0003/kujiale_0003.usda",
-            "lighting": "stage",
+            "name": "00801-HaxA7YrQdEC_explore",
+            "scene": "/home/benni/datasets/hm3d-minival-glb-v0.2/00801-HaxA7YrQdEC/HaxA7YrQdEC_collision.usd",
+            "lighting": "camera",
+            "goal": {
+                "task": "explore"
+            },
+            "max_runtime": 600.0
+        },
+        {
+            "name": "00801-HaxA7YrQdEC_cup",
+            "scene": "/home/benni/datasets/hm3d-minival-glb-v0.2/00801-HaxA7YrQdEC/HaxA7YrQdEC_collision.usd",
+            "lighting": "camera",
             "goal": {
                 "task": "search",
-                "label": "desk",
-                "position": [
-                    -1.0,
-                    1.45,
-                    0.5
-                ],
-                "asset": "plate"
+                "label": "cup",
+                "position": [-2.55, 1.84, 0.91],
+                "theta": -90,
+                "asset": "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Props/Mugs/SM_Mug_D1.usd"
             },
-            "max_runtime": 180.0,
-            "initialmap_experiment": "kujiale_0003_explore"
+            "max_runtime": 300.0,
+            "initialmap_experiment": "00801-HaxA7YrQdEC_explore"
         }
     ]
 }

@@ -349,6 +349,19 @@ def build_proccesses(
     if app.lower() not in ["dynamem", "perceivesemantix"]:
         raise ValueError(f"Unsupported app: {app}")
 
+    issac_sim_options = []
+    if "asset" in experiment["goal"] and "position" in experiment["goal"]:
+        asset = experiment["goal"]["asset"]
+        position = experiment["goal"]["position"]
+        theta = experiment["goal"].get("theta", 0.0)
+        issac_sim_options += [
+            "--asset",
+            str(asset),
+            str(position[0]),
+            str(position[1]),
+            str(position[2]),
+            str(theta),
+        ]
     processes = [
         {
             "name": "IsaacSim",
@@ -361,6 +374,7 @@ def build_proccesses(
                 str(experiment.get("scene")),
                 "--lighting",
                 experiment.get("lighting", "stage"),
+                *issac_sim_options,
             ],
             "cwd": "/home/benni/repos/stretch_isaac/",
             "color": COLORS["red"],
