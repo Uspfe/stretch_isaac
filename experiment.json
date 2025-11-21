@@ -10,6 +10,20 @@
             "max_runtime": 600.0
         },
         {
+            "name": "00800-TEEsavR23oF_cup",
+            "scene": "/home/benni/datasets/hm3d-minival-glb-v0.2/00800-TEEsavR23oF/TEEsavR23oF_collision.usd",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "cup",
+                "position": [-4.15031, -0.42591, 0.86],
+                "theta": 0,
+                "asset": "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Props/Mugs/SM_Mug_C1.usd"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "00800-TEEsavR23oF_explore"
+        },
+        {
             "name": "00801-HaxA7YrQdEC_explore",
             "scene": "/home/benni/datasets/hm3d-minival-glb-v0.2/00801-HaxA7YrQdEC/HaxA7YrQdEC_collision.usd",
             "lighting": "camera",
