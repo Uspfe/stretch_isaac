@@ -1,0 +1,30 @@
+mdl 1.6;
+
+import df::*;
+import tex::*;
+
+export material material_Caster_Rollers_Red(
+    color diffuse_color = color(0.800000011920929, 0.0013810000382363796, 0.0),
+    float metallic = 0.0,
+    float roughness = 0.5,
+    float specular_level = 0.5,
+    color emissive_color = color(0.0, 0.0, 0.0),
+    float emissive_intensity = 0.0,
+    float opacity = 1.0,
+    float opacity_mode = 1,
+    float texture_rotate = 0.0,
+    float2 texture_scale = float2(1.0, 1.0),
+    float2 texture_translate = float2(0.0, 0.0)
+)
+= material(
+    surface: material_surface(
+        emission: emissive_color * emissive_intensity,
+        opacity: opacity,
+        scattering: df::pbr(
+            base_color: diffuse_color,
+            metallic: metallic,
+            roughness: roughness,
+            specular: specular_level
+        )
+    )
+);
