@@ -10,7 +10,7 @@ from typing import Literal, Optional, Union
 from matplotlib import pyplot as plt
 import numpy as np
 from isaacsim import SimulationApp
-from multi_dijkstra import MultiDijkstra
+from utils.multi_dijkstra import MultiDijkstra
 
 app = SimulationApp({"headless": True})  # we can also run as headless.
 
