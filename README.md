@@ -2,12 +2,10 @@
 
 Files to simulate Hello Robot's [Stretch 3](https://hello-robot.com/stretch-3-product) in [IsaacSim](https://developer.nvidia.com/isaac/sim) with ROS2 integration.
 
-<div style="display: flex; width: 100%; gap: 24px;">
-  <img src="img/default.png" alt="alt text"
-       style="flex: 1; height: 400px; object-fit: contain; object-position: right center;">
-  <img src="img/kitchen.png" alt="alt text"
-       style="flex: 1; height: 400px; object-fit: contain; object-position: left center;">
-</div>
+<p align="center">
+  <img src="image.png" alt="alt text" height="400">
+  <img src="image-1.png" alt="alt text" height="400">
+</p>
 
 ## Prerequisites
 
