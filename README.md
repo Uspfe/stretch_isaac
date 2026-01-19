@@ -3,8 +3,8 @@
 Files to simulate Hello Robot's [Stretch 3](https://hello-robot.com/stretch-3-product) in [IsaacSim](https://developer.nvidia.com/isaac/sim) with ROS2 integration.
 
 <p align="center">
-  <img src="img/default.png" alt="alt text" height="400">
-  <img src="img/kitchen.png" alt="alt text" height="400">
+  <img src=".img/default.png" alt="alt text" height="400">
+  <img src=".img/kitchen.png" alt="alt text" height="400">
 </p>
 
 ## Prerequisites
@@ -40,7 +40,7 @@ If your scene does not already include the robot:
   - Import `robot_usd/stretch3.usd` into the current stage
   - Use **File > Import Reference** or drag-and-drop it via the content browser
   - In the scene graph, make sure to import the robot below the root prim `/map` as the name of this prim is used as the global reference frame when publishing to ROS
-  ![scene tree](img/scene_tree.png)
+  ![scene tree](.img/scene_tree.png)
 
 ## Simulation script
 
@@ -136,7 +136,7 @@ Adapted from the Isaac Sim docs:
   (synchronized to system time)  
     - Adapt or reuse OmniGraph templates from **Window > Graph Editors > Action Graph**
 
-      <img src="img/action_graph.png" width="50%">
+      <img src=".img/action_graph.png" width="50%">
 
     - **ROS2 Topic Overview**
     
@@ -199,4 +199,4 @@ Adapted from the Isaac Sim docs:
     > - Check the lower/ upper limit or max force value of the joints.
     > - Recheck armature, damping, and stiffness values.
 
-    <img src="img/joint_drive.png" width="50%">
+    <img src=".img/joint_drive.png" width="50%">
