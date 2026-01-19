@@ -38,6 +38,7 @@ If your scene does not already include the robot:
 
 Run `pixi run python standalone_sim.py` to launch IsaacSim loading a sample scene and the robot in a scripted manner. Check `pixi run python standalone_sim.py --help` for more options (such as loading a different scene).
 
+> API Documentation of [IsaacSim](https://docs.isaacsim.omniverse.nvidia.com/5.1.0/py/source/extensions/isaacsim.core.api/docs/index.html)
 
 
 ## Directory Layout

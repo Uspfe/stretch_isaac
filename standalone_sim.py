@@ -22,7 +22,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--scene",
         type=Path,
-        help="Path to the USD scene file to load (if not provided, a simple ground plane is loaded).",
+        help="Path to the USD scene file to load (If not provided, a simple ground plane is loaded. Else the ground plane is loaded but visually hidden to create a flat floor collider.).",
         default=None,
     )
     parser.add_argument(
@@ -488,7 +488,7 @@ def main(simulation_app, args: argparse.Namespace):
         world = World()
         world.reset()
 
-    ground_plane = world.scene.add_ground_plane(prim_path=root_prim + "/defaultGroundPlane", z_position=0.05)
+    ground_plane = world.scene.add_default_ground_plane(prim_path=root_prim + "/defaultGroundPlane", z_position=0.05)
     if args.scene is not None:
         hide_prim(world.stage, ground_plane.prim_path)
 
