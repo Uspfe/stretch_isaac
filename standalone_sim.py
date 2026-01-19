@@ -1,27 +1,110 @@
-# launch Isaac Sim before any other imports
-# default first two lines in any standalone application
 import argparse
 import csv
 import json
-from pathlib import Path
 import time
+from pathlib import Path
 from typing import Literal, Optional, Union
 
-from matplotlib import pyplot as plt
 import numpy as np
 from isaacsim import SimulationApp
+from matplotlib import pyplot as plt
+
 from utils.multi_dijkstra import MultiDijkstra
 
-app = SimulationApp({"headless": True})  # we can also run as headless.
 
-import omni.kit.actions.core
-from isaacsim.core.api import World
-from isaacsim.core.utils import extensions
-from omni.isaac.core.articulations import Articulation
-from omni.isaac.core.utils.stage import add_reference_to_stage
-from pxr import Sdf, Usd, UsdGeom, Gf, PhysxSchema
-import omni
-import carb
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run standalone simulation with optional scene selection.")
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run the simulation in headless mode.",
+    )
+    parser.add_argument(
+        "--scene",
+        type=Path,
+        help="Path to the USD scene file to load (if not provided, a simple ground plane is loaded).",
+        default=None,
+    )
+    parser.add_argument(
+        "--lighting",
+        type=str,
+        choices=["camera", "stage"],
+        default="stage",
+        help="Lighting mode to use (default: stage).",
+    )
+    parser.add_argument(
+        "--asset",
+        nargs=5,
+        action="append",
+        metavar=("PATH", "X", "Y", "Z", "THETA"),
+        help="Assets to spawn additionally. Definition: path (path to USD file) x y z theta (in deg) (can be provided multiple times)",
+        default=[],
+    )
+    parser.add_argument(
+        "--rasset",
+        type=str,
+        help="Substring of assets to remove from the scene.",
+        nargs="*",
+        default=[],
+    )
+    parser.add_argument(
+        "--rasset-exclude",
+        type=str,
+        help="Substring of assets to exclude from removal even if they match rasset.",
+        nargs="*",
+        default=[],
+    )
+    parser.add_argument(
+        "--gasset",
+        type=str,
+        help="Goal assets to broadcast their position.",
+    )
+    parser.add_argument(
+        "--gasset-exclude",
+        type=str,
+        help="Substring of goal assets to exclude from broadcasting even if they match gasset.",
+        nargs="*",
+        default=[],
+    )
+    parser.add_argument(
+        "--generate-map",
+        type=Path,
+        help="Path to save the generated occupancy map in a .npz file.",
+        default=None,
+    )
+    parser.add_argument(
+        "--generate-map-objs",
+        type=str,
+        help="Objects whose positions to store additionally in the .npz map file (by substring match of the prim path).",
+        nargs="*",
+        default=[],
+    )
+    parser.add_argument(
+        "--disable-scene-collider",
+        action="store_true",
+        help="Disable the scene collider.",
+    )
+
+    args = parser.parse_args()
+
+    if args.generate_map is not None and args.generate_map.suffix != ".npz":
+        raise ValueError("generate-map path must end with .npz")
+
+    return args
+
+
+args = parse_args()
+app = SimulationApp({"headless": args.headless})
+
+# issacsim imports only become availbele after `SimulationApp` is created
+import carb  # pyright: ignore[reportMissingImports] # noqa: E402
+import omni  # pyright: ignore[reportMissingImports] # noqa: E402
+import omni.kit.actions.core  # pyright: ignore[reportMissingImports] # noqa: E402
+from isaacsim.core.api import World  # pyright: ignore[reportMissingImports] # noqa: E402
+from isaacsim.core.utils import extensions  # pyright: ignore[reportMissingImports] # noqa: E402
+from omni.isaac.core.articulations import Articulation  # pyright: ignore[reportMissingImports] # noqa: E402
+from omni.isaac.core.utils.stage import add_reference_to_stage  # pyright: ignore[reportMissingImports] # noqa: E402
+from pxr import Gf, PhysxSchema, Sdf, Usd, UsdGeom  # pyright: ignore[reportMissingImports] # noqa: E402
 
 
 def read_colors(csv_path: Path) -> dict:
@@ -31,6 +114,7 @@ def read_colors(csv_path: Path) -> dict:
         for row in reader:
             colors[row["object"]] = [float(row["r"]), float(row["g"]), float(row["b"])]
     return colors
+
 
 def compute_occupancy_map(
     root_prim_path: str,
@@ -114,7 +198,7 @@ def compute_occupancy_map(
             if prim_hit_counts:
                 # choose prim with most hits
                 top_prim = max(prim_hit_counts, key=lambda k: prim_hit_counts[k])
-                
+
                 for key in prim_colors:
                     if key in top_prim:  # substring match
                         color[ix, iy] = prim_colors[key]
@@ -310,74 +394,8 @@ def disable_collision(root_prim: Usd.Prim):
         #     attr = collision_api.GetPrim().CreateAttribute("physics:collisionEnabled", Sdf.ValueTypeNames.Bool)
 
 
-def main(simulation_app):
-    parser = argparse.ArgumentParser(description="Run standalone simulation with optional scene selection.")
-    parser.add_argument(
-        "--scene",
-        type=Path,
-        help="Path to the USD scene file to load.",
-        default=None,
-    )
-    parser.add_argument(
-        "--lighting",
-        type=str,
-        choices=["camera", "stage"],
-        default="stage",
-        help="Lighting mode to use.",
-    )
-    parser.add_argument(
-        "--asset",
-        nargs=5,
-        action="append",
-        metavar=("NAME", "X", "Y", "Z", "THETA"),
-        help="Asset definition: name x y z theta (in deg) (can be provided multiple times)",
-        default=[],
-    )
-    parser.add_argument(
-        "--rasset",
-        type=str,
-        help="Substring of assets to remove from the scene.",
-        nargs="*",
-        default=[],
-    )
-    parser.add_argument(
-        "--rasset-exclude",
-        type=str,
-        help="Substring of assets to exclude from removal even if they match rasset.",
-        nargs="*",
-        default=[],
-    )
-    parser.add_argument(
-        "--gasset",
-        type=str,
-        help="Goal assets to broadcast their position.",
-    )
-    parser.add_argument(
-        "--gasset-exclude",
-        type=str,
-        help="Substring of goal assets to exclude from broadcasting even if they match gasset.",
-        nargs="*",
-        default=[],
-    )
-    parser.add_argument(
-        "--generate-map",
-        type=Path,
-        help="Path to save the generated occupancy map.",
-        default=None,
-    )
-    parser.add_argument(
-        "--generate-map-objs",
-        type=str,
-        help="Objects whose positions to store additionally",
-        nargs="*",
-        default=[],
-    )
-
-    args = parser.parse_args()
+def main(simulation_app, args: argparse.Namespace):
     args.asset = parse_assets(args.asset)
-
-    if args.generate_map is not None and args.generate_map.suffix != ".npz":
-        raise ValueError("generate-map path must end with .npz")
 
     extensions.enable_extension("isaacsim.ros2.bridge")
     simulation_app.update()
@@ -401,7 +419,9 @@ def main(simulation_app):
 
         print(f"Searching for goal assets with substring: {args.gasset}")
         goal_assets = get_toplevel_prims_substring(_scene, [args.gasset]) if args.gasset is not None else []
-        goal_assets = [prim for prim in goal_assets if not any(exclude in prim.GetName() for exclude in args.gasset_exclude)]
+        goal_assets = [
+            prim for prim in goal_assets if not any(exclude in prim.GetName() for exclude in args.gasset_exclude)
+        ]
 
         world.reset()
 
@@ -422,17 +442,34 @@ def main(simulation_app):
         if args.generate_map is not None:
             prim_colors = read_colors(Path("./interior_agent_objects.csv"))
             _occupancy_map, x, y, colored_map = compute_occupancy_map(
-                root_prim_path="/Root", resolution=0.1, width_m=20, height_m=20, z_min=0.2, z_max=1.8, return_color=True, prim_colors=prim_colors
+                root_prim_path="/Root",
+                resolution=0.1,
+                width_m=20,
+                height_m=20,
+                z_min=0.2,
+                z_max=1.8,
+                return_color=True,
+                prim_colors=prim_colors,
             )
 
             if len(args.generate_map_objs) > 0:
                 additional_assets = get_toplevel_prims_substring(_scene, args.generate_map_objs)
-                print(f"Found additional assets for map generation: {[prim.GetPath() for prim in additional_assets]} for substrings {args.generate_map_objs}")
+                print(
+                    f"Found additional assets for map generation: {[prim.GetPath() for prim in additional_assets]} for substrings {args.generate_map_objs}"
+                )
                 additional_positions = dump_prim_position(additional_assets, print_output=False)
             else:
                 additional_positions = np.ndarray((0, 3))
 
-            np.savez_compressed(args.generate_map, colored_map=colored_map, x=x, y=y, goal_positions=goal_positions, shortest_path=shortest_path, additional_positions=additional_positions)
+            np.savez_compressed(
+                args.generate_map,
+                colored_map=colored_map,
+                x=x,
+                y=y,
+                goal_positions=goal_positions,
+                shortest_path=shortest_path,
+                additional_positions=additional_positions,
+            )
             # print state once, so parent process know isaac sim started successfully
             dump_state(
                 0.0,
@@ -444,18 +481,22 @@ def main(simulation_app):
             print(f"Saved map to {args.generate_map}")
             exit(0)
 
-        print(f"Disabling collision for scene {_scene.GetPath()}")
-        disable_collision(_scene)
+        if args.disable_scene_collider:
+            print(f"Disabling collision for scene {_scene.GetPath()}")
+            disable_collision(_scene)
+    else:
+        world = World()
+        world.reset()
 
     ground_plane = world.scene.add_ground_plane(prim_path=root_prim + "/defaultGroundPlane", z_position=0.05)
     if args.scene is not None:
         hide_prim(world.stage, ground_plane.prim_path)
 
-    # print(f"Setting lighting mode to {args.lighting}")
-    # switch_lighting(mode=args.lighting)
+    print(f"Setting lighting mode to {args.lighting}")
+    switch_lighting(mode=args.lighting)
 
     # load robot
-    stretch_asset_path = "/home/benni/repos/stretch_isaac/importable_stretch_no_arm_collider.usd"
+    stretch_asset_path = Path("./robot_usd/stretch3_no_arm_collider.usd").absolute().as_posix()
     prim_stretch = add_reference_to_stage(usd_path=stretch_asset_path, prim_path=root_prim)
 
     for id, asset in enumerate(args.asset):
@@ -500,4 +541,4 @@ def main(simulation_app):
 
 
 if __name__ == "__main__":
-    main(app)
+    main(app, args)
