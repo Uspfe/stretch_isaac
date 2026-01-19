@@ -25,9 +25,10 @@ A minimal end-to-end workflow is as follows:
     ```bash
       isaacsim
     ```
-3. Open the [provided example scene](example_scene_hm3d.usd) from the Habitat Matterport 3D set with already imported stretch robot (in the entrance area)
-4. Play the simulation.
-5. Test ROS2 integration (Seperate terminal. To run these you need a ROS2 installation, which is not included in the minimal ROS2 install included with IsaacSim.)
+3. Open the [provided example scene](stretch_isaac/example_stage/hm3d_example.usd) from the Habitat Matterport 3D
+4. Import the [stretch3.usd](stretch_isaac/robot_usd/stretch3.usd) (be its root prim is called "/map". See [here](#manual-robot-import))
+5. Play the simulation.
+6. Test ROS2 integration (Seperate terminal. To run these you need a ROS2 installation, which is not included in the minimal ROS2 install included with IsaacSim.)
     - `ros2 topic echo /tf`
     - `ros2 topic pub /stretch/cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.2}}"`
 
@@ -43,7 +44,9 @@ If your scene does not already include the robot:
 
 ## Simulation script
 
-Run `pixi run python standalone_sim.py` to launch IsaacSim loading a sample scene and the robot in a scripted manner. Check `pixi run python standalone_sim.py --help` for more options (such as loading a different scene).
+- `pixi run python standalone_sim.py` to launch IsaacSim loading an empty scene (only ground plane)
+- `pixi run python standalone_sim.py --scene ./stretch_isaac/example_stage/hm3d_example.usd` to load the provided example scene
+- `pixi run python standalone_sim.py --help` to check available options
 
 > API Documentation of [IsaacSim](https://docs.isaacsim.omniverse.nvidia.com/5.1.0/py/source/extensions/isaacsim.core.api/docs/index.html)
 

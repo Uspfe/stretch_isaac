@@ -84,11 +84,19 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Disable the scene collider.",
     )
+    parser.add_argument(
+        "--no-ground-plane",
+        action="store_true",
+        help="Disable the ground plane.",
+    )
 
     args = parser.parse_args()
 
     if args.generate_map is not None and args.generate_map.suffix != ".npz":
         raise ValueError("generate-map path must end with .npz")
+    
+    if args.scene is not None and not args.scene.exists():
+        raise FileNotFoundError(f"Scene file {args.scene} does not exist.")
 
     return args
 
@@ -396,6 +404,7 @@ def disable_collision(root_prim: Usd.Prim):
 
 def main(simulation_app, args: argparse.Namespace):
     args.asset = parse_assets(args.asset)
+    args.scene = args.scene.resolve().absolute() if args.scene is not None else None
 
     extensions.enable_extension("isaacsim.ros2.bridge")
     simulation_app.update()
