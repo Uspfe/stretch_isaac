@@ -3,8 +3,8 @@
 Files to simulate Hello Robot's [Stretch 3](https://hello-robot.com/stretch-3-product) in [IsaacSim](https://developer.nvidia.com/isaac/sim) with ROS2 integration.
 
 <p align="center">
-  <img src="image.png" alt="alt text" height="400">
-  <img src="image-1.png" alt="alt text" height="400">
+  <img src="img/default.png" alt="alt text" height="400">
+  <img src="img/kitchen.png" alt="alt text" height="400">
 </p>
 
 ## Prerequisites
