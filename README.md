@@ -26,7 +26,7 @@ A minimal end-to-end workflow is as follows:
       isaacsim
     ```
 3. Open the [provided example scene](stretch_isaac/example_stage/hm3d_example.usd) from the Habitat Matterport 3D
-4. Import the [stretch3.usd](stretch_isaac/robot_usd/stretch3.usd) (be its root prim is called "/map". See [here](#manual-robot-import))
+4. Import the [stretch3.usd](stretch_isaac/robot_usd/stretch3.usd) (make sure its root prim is called "/map". See [here](#manual-robot-import))
 5. Play the simulation.
 6. Test ROS2 integration (Seperate terminal. To run these you need a ROS2 installation, which is not included in the minimal ROS2 install included with IsaacSim.)
     - `ros2 topic echo /tf`
