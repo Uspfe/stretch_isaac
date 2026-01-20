@@ -1,9 +1,79 @@
 from pathlib import Path
 import json
 from typing import Optional
+import csv
 
 import matplotlib.pyplot as plt
 import numpy as np
+
+global OBJECT_PIXEL_COUNTS
+OBJECT_PIXEL_COUNTS = {}
+
+def remap_colors(data: np.ndarray, old_colormap_path: str, new_colormap_path: str) -> np.ndarray:
+    """
+    Remap RGB data using old->new colormap CSV, but keep pure black and white unchanged.
+
+    data: (...,3) float RGB array in [0,1]
+    old_colormap_path: CSV with object,r,g,b
+    new_colormap_path: CSV with object,r,g,b
+    """
+
+    # Load old colors
+    old_colors = []
+    with open(old_colormap_path, newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            old_colors.append((float(row["r"]), float(row["g"]), float(row["b"])))
+    old_colors = np.array(old_colors, dtype=np.float32)
+
+    # Load new colors
+    new_colors = []
+    with open(new_colormap_path, newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            new_colors.append((float(row["r"]), float(row["g"]), float(row["b"])))
+    new_colors = np.array(new_colors, dtype=np.float32)
+
+    # Flatten for vectorized operations
+    flat = data.reshape(-1, 3).astype(np.float32)
+
+    # Mask for black/white pixels
+    is_bw = np.all((flat == 0) | (flat == 1), axis=1)
+
+    # Compute nearest color only for non-BW
+    to_map = ~is_bw
+    dists = ((flat[to_map, None, :] - old_colors[None, :, :]) ** 2).sum(axis=2)
+    flat[to_map] = new_colors[np.argmin(dists, axis=1)]
+
+    return flat.reshape(data.shape)
+
+
+def count_pixels_per_object(data: np.ndarray, colormap_path: Path) -> None:
+    """
+    Count pixels per object in a RGB data array and add to pixel_counts dict.
+
+    data: (...,3) float RGB array in [0,1]
+    colormap_path: CSV file with object,r,g,b
+    """
+    global OBJECT_PIXEL_COUNTS
+
+    # Load colormap
+    objects = []
+    colors = []
+    with open(colormap_path, newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            objects.append(row["object"])
+            colors.append((float(row["r"]), float(row["g"]), float(row["b"])))
+    colors = np.array(colors, dtype=np.float32)
+
+    # Flatten data for vectorized computation
+    flat = data.reshape(-1, 3).astype(np.float32)
+
+    # Count pixels per object
+    for obj, color in zip(objects, colors):
+        mask = np.all(flat == color, axis=1)
+        OBJECT_PIXEL_COUNTS[obj] = OBJECT_PIXEL_COUNTS.get(obj, 0) + np.sum(mask)
 
 
 def select_experiments(
@@ -67,6 +137,18 @@ def create_experiment_plot(
 
     state_trajectory_file = experiment_result["state_trajectory_file"]
     state_trajecory = np.load(state_trajectory_file)
+
+    # remap colors
+    if "colored_map" in map_data:
+        colored_map = remap_colors(
+            colored_map,
+            old_colormap_path=Path("./interior_agent_objects.csv"),
+            new_colormap_path=Path("./colormap_css4.csv"),
+        )
+        count_pixels_per_object(
+            colored_map,
+            colormap_path=Path("./colormap_css4.csv"),
+        )
 
     if rotate_90_deg:
         # rotate data here
@@ -212,9 +294,9 @@ def main():
     for e in exp:
         fig = create_experiment_plot(e, data, figsize=(6, 6), square=True)
         if fig:
-            fig.savefig((fig_output_dir / f"{e['name']}.webp").absolute().as_posix(), pad_inches=0, dpi=200)
+            success_str = "s" if e["success"] else "f"
+            fig.savefig((fig_output_dir / f"{e['name']}_{success_str}.webp").absolute().as_posix(), pad_inches=0, dpi=200)
             plt.close(fig)
-
 
     data = load_result_json(Path("/home/benni/datasets/sim_results_syn_new/experiments_results.json"))
     exp = select_experiments(
@@ -225,9 +307,9 @@ def main():
     for e in exp:
         fig = create_experiment_plot(e, data, figsize=(6, 6), square=True)
         if fig:
-            fig.savefig((fig_output_dir / f"{e['name']}.webp").absolute().as_posix(), pad_inches=0, dpi=200)
+            success_str = "s" if e["success"] else "f"
+            fig.savefig((fig_output_dir / f"{e['name']}_{success_str}.webp").absolute().as_posix(), pad_inches=0, dpi=200)
             plt.close(fig)
-
 
     data = load_result_json(Path("/home/benni/datasets/sim_results_syn_moved/experiments_results.json"))
     exp = select_experiments(
@@ -239,8 +321,14 @@ def main():
     for e in exp:
         fig = create_experiment_plot(e, data, figsize=(5, 5), square=True)
         if fig:
-            fig.savefig((fig_output_dir / f"{e['name']}.webp").absolute().as_posix(), pad_inches=0, dpi=200)
+            success_str = "s" if e["success"] else "f"
+            fig.savefig((fig_output_dir / f"{e['name']}_{success_str}.webp").absolute().as_posix(), pad_inches=0, dpi=200)
             plt.close(fig)
+
+    # Print pixel counts per object
+    global OBJECT_PIXEL_COUNTS
+    for obj, count in sorted(OBJECT_PIXEL_COUNTS.items(), key=lambda x: x[1], reverse=True):
+        print(f"{obj}: {count} pixels")
 
 
 if __name__ == "__main__":
