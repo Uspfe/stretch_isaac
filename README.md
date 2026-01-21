@@ -84,7 +84,7 @@ pixi run python standalone_sim.py \
 This script starts IsaacSim and periodically prints information about the goal asset and the robot state:
 
 ```
-<goals>{"bottle_0010": {"x": -3.59, "y": 5.19, "z": 0.95}, "shortest_distance": 4.94}</goals>
+<goals>{"bottle_0010": {"x": -3.59, "y": 5.19, "z": 0.95}, "shortest_distance": 6.44}</goals>
 <robot>{"time": 6.08333365060389, "position": {"x": -0.6012449264526367, "y": -8.089374750852585e-05, "z": 0.04939977824687958}, "orientation": {"w": 0.9999939203262329, "x": -0.0004203889984637499, "y": 0.0012234784662723541, "z": 0.0032800277695059776}, "linear_velocity": {"vx": -0.012691676616668701, "vy": -0.003575022565200925, "vz": 0.06355907768011093}}</robot>
 ```
 
