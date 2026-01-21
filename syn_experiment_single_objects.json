@@ -163,7 +163,10 @@
             },
             "max_runtime": 900.0,
             "remove_assets": ["ornament", "bottle", "flower", "cup"],
-            "exclude_remove_assets": ["bottle_0012", "flower_0003", "cup_0003"]
+            "exclude_remove_assets": ["bottle_0012", "flower_0003", "cup_0003"],
+            "robot_start": {
+                "position": [-0.6, 0.0, 0.0]
+            }
         },
         {
             "name": "kujiale_0020_bottle_moved",
@@ -179,7 +182,10 @@
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0020_explore_moved",
             "remove_assets": ["ornament", "bottle", "flower"],
-            "exclude_remove_assets": ["bottle_0010"]
+            "exclude_remove_assets": ["bottle_0010"],
+            "robot_start": {
+                "position": [-0.6, 0.0, 0.0]
+            }
         },
         {
             "name": "kujiale_0020_potted-plant_moved",
@@ -195,7 +201,10 @@
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0020_explore_moved",
             "remove_assets": ["ornament", "bottle", "flower"],
-            "exclude_remove_assets": ["flower_0000"]
+            "exclude_remove_assets": ["flower_0000"],
+            "robot_start": {
+                "position": [-0.6, 0.0, 0.0]
+            }
         },
         {
             "name": "kujiale_0020_cup_moved",
@@ -211,7 +220,10 @@
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0020_explore_moved",
             "remove_assets": ["ornament", "bottle", "flower", "cup"],
-            "exclude_remove_assets": ["cup_0004"]
+            "exclude_remove_assets": ["cup_0004"],
+            "robot_start": {
+                "position": [-0.6, 0.0, 0.0]
+            }
         },
 
 
@@ -228,7 +240,10 @@
             },
             "max_runtime": 900.0,
             "remove_assets": ["ornament", "table", "flower", "chair"],
-            "exclude_remove_assets": ["dining_table", "table_0002", "flower_0002", "chair_0004"]
+            "exclude_remove_assets": ["dining_table", "table_0002", "flower_0002", "chair_0004"],
+            "robot_start": {
+                "position": [4.7, 0.0, 0.0]
+            }
         },
         {
             "name": "kujiale_0021_coffee_table_moved",
@@ -243,7 +258,10 @@
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0021_explore_moved",
             "remove_assets": ["ornament", "table", "flower", "chair"],
-            "exclude_remove_assets": ["dining_table", "table_0001", "flower_0002", "chair_0004"]
+            "exclude_remove_assets": ["dining_table", "table_0001", "flower_0002", "chair_0004"],
+            "robot_start": {
+                "position": [4.7, 0.0, 0.0]
+            }
         },
         {
             "name": "kujiale_0021_potted_plant_moved",
@@ -258,7 +276,10 @@
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0021_explore_moved",
             "remove_assets": ["ornament", "table", "flower", "chair"],
-            "exclude_remove_assets": ["dining_table", "table_0002", "flower_0003", "chair_0004"]
+            "exclude_remove_assets": ["dining_table", "table_0002", "flower_0003", "chair_0004"],
+            "robot_start": {
+                "position": [4.7, 0.0, 0.0]
+            }
         },
         {
             "name": "kujiale_0021_chair_moved",
@@ -273,7 +294,10 @@
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0021_explore_moved",
             "remove_assets": ["ornament", "table", "flower", "chair"],
-            "exclude_remove_assets": ["dining_table", "table_0002", "flower_0003", "chair_0003"]
+            "exclude_remove_assets": ["dining_table", "table_0002", "flower_0003", "chair_0003"],
+            "robot_start": {
+                "position": [4.7, 0.0, 0.0]
+            }
         },
 
 
@@ -312,7 +336,10 @@
             },
             "max_runtime": 900.0,
             "remove_assets": ["ornament", "pillow", "chair", "cup"] ,
-            "exclude_remove_assets": ["throw_pillow_0003", "chair_0000", "cup_0003"]
+            "exclude_remove_assets": ["throw_pillow_0003", "chair_0000", "cup_0003"],
+            "robot_start": {
+                "position": [-1.4, 0.2, 0.0]
+            }
         },
         {
             "name": "kujiale_0024_pillow_moved",
@@ -328,7 +355,10 @@
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0024_explore_moved",
             "remove_assets": ["ornament", "pillow", "chair", "sofa"],
-            "exclude_remove_assets": ["pillow_0000"]
+            "exclude_remove_assets": ["pillow_0000"],
+            "robot_start": {
+                "position": [-1.4, 0.2, 0.0]
+            }
         },
 
 
@@ -342,7 +372,10 @@
             },
             "max_runtime": 900.0,
             "remove_assets": ["ornament", "menorah", "book", "pillow", "chair"],
-            "exclude_remove_assets": ["book_0001", "throw_pillow_0004", "chair_0003"]
+            "exclude_remove_assets": ["book_0001", "throw_pillow_0004", "chair_0003"],
+            "robot_start": {
+                "position": [1.1, 0.0, 0.0]
+            }
         },
         {
             "name": "kujiale_0026_chair_moved",
@@ -358,7 +391,10 @@
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0026_explore_moved",
             "remove_assets": ["ornament", "menorah", "book", "pillow", "chair"],
-            "exclude_remove_assets": ["chair_0004"]
+            "exclude_remove_assets": ["chair_0004"],
+            "robot_start": {
+                "position": [1.1, 0.0, 0.0]
+            }
         },
         {
             "name": "kujiale_0026_pillow_moved",
@@ -374,7 +410,10 @@
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0026_explore_moved",
             "remove_assets": ["ornament", "menorah", "book", "pillow"],
-            "exclude_remove_assets": ["throw_pillow_0007"]
+            "exclude_remove_assets": ["throw_pillow_0007"],
+            "robot_start": {
+                "position": [1.1, 0.0, 0.0]
+            }
         },
 
 
@@ -387,7 +426,10 @@
             },
             "max_runtime": 900.0,
             "remove_assets": ["ornament", "vase", "bowl", "tea_set", "cup"] ,
-            "exclude_remove_assets": ["cup_0000", "kitchenware_0002", "tea_set_0001"]
+            "exclude_remove_assets": ["cup_0000", "kitchenware_0002", "tea_set_0001"],
+            "robot_start": {
+                "position": [0.45, -0.5, 0.0]
+            }
         },
         {
             "name": "kujiale_0030_bowl_moved",
@@ -402,7 +444,10 @@
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0030_explore_moved",
             "remove_assets": ["ornament", "vase", "bowl", "tea_set", "cup"] ,
-            "exclude_remove_assets": ["bowl_0000", "bowl_0001", "bowl_0002"]
+            "exclude_remove_assets": ["bowl_0000", "bowl_0001", "bowl_0002"],
+            "robot_start": {
+                "position": [0.45, -0.5, 0.0]
+            }
         },
         {
             "name": "kujiale_0030_cup_moved",
@@ -417,7 +462,10 @@
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0030_explore_moved",
             "remove_assets": ["ornament", "vase", "bowl", "tea_set", "cup"] ,
-            "exclude_remove_assets": ["tea_set_0000"]
+            "exclude_remove_assets": ["tea_set_0000"],
+            "robot_start": {
+                "position": [0.45, -0.5, 0.0]
+            }
         }
    ]
 }

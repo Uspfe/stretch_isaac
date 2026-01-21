@@ -319,6 +319,14 @@ def main(simulation_app):
         default=None,
     )
     parser.add_argument(
+        "--robot-start",
+        nargs=4,
+        type=float,
+        metavar=("X", "Y", "Z", "THETA"),
+        help="Starting position and orientation of the robot (in deg).",
+        default=(0.0, 0.0, 0.0, 0.0),
+    )
+    parser.add_argument(
         "--lighting",
         type=str,
         choices=["camera", "stage"],
@@ -446,8 +454,11 @@ def main(simulation_app):
 
         print(f"Disabling collision for scene {_scene.GetPath()}")
         disable_collision(_scene)
+    else:
+        world = World()
+        world.reset()
 
-    ground_plane = world.scene.add_ground_plane(prim_path=root_prim + "/defaultGroundPlane", z_position=0.05)
+    ground_plane = world.scene.add_default_ground_plane(prim_path=root_prim + "/defaultGroundPlane", z_position=0.05)
     if args.scene is not None:
         hide_prim(world.stage, ground_plane.prim_path)
 
@@ -455,8 +466,8 @@ def main(simulation_app):
     # switch_lighting(mode=args.lighting)
 
     # load robot
-    stretch_asset_path = "/home/benni/repos/stretch_isaac/importable_stretch_no_arm_collider.usd"
-    prim_stretch = add_reference_to_stage(usd_path=stretch_asset_path, prim_path=root_prim)
+    stretch_asset_path = Path("./importable_stretch_no_arm_collider.usd").absolute()
+    prim_stretch = add_reference_to_stage(usd_path=str(stretch_asset_path), prim_path=root_prim)
 
     for id, asset in enumerate(args.asset):
         asset_usd_path, x, y, z, theta = asset
@@ -469,6 +480,10 @@ def main(simulation_app):
     world.reset()
 
     stretch = Articulation(prim_path=str(prim_stretch.GetPath()) + "/stretch")
+    stretch.set_world_pose(
+        np.array([args.robot_start[0], args.robot_start[1], args.robot_start[2]]),
+        np.array([np.cos(np.deg2rad(args.robot_start[3])/2), 0, 0, np.sin(np.deg2rad(args.robot_start[3])/2)]),
+    )
     stretch.initialize()
 
     print_pose_interval: int = 33

@@ -535,6 +535,17 @@ def build_proccesses(
                 experiment["exclude_remove_assets"] = [experiment["exclude_remove_assets"]]
             if len(experiment["exclude_remove_assets"]) > 0:
                 issac_sim_options += ["--rasset-exclude"] + experiment["exclude_remove_assets"]
+    if "robot_start" in experiment:
+        position = experiment["robot_start"]["position"]
+        theta = experiment["robot_start"].get("theta", 0.0)
+        issac_sim_options += [
+            "--robot-start",
+            str(position[0]),
+            str(position[1]),
+            str(position[2]),
+            str(theta),
+        ]
+
 
     output_dir = output_root / app.lower() / Path(experiment.get("scene")).stem / experiment["name"]
     output_dir = output_dir.resolve()

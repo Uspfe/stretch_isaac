@@ -211,7 +211,10 @@
                 "task": "explore"
             },
             "max_runtime": 900.0,
-            "remove_assets": ["ornament"]
+            "remove_assets": ["ornament"],
+            "robot_start": {
+                "position": [-0.6, 0.0, 0.0]
+            }
         },
         {
             "name": "kujiale_0020_bottle",
@@ -224,7 +227,10 @@
             },
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0020_explore",
-            "remove_assets": ["ornament"]
+            "remove_assets": ["ornament"],
+            "robot_start": {
+                "position": [-0.6, 0.0, 0.0]
+            }
         },
         {
             "name": "kujiale_0020_lamp",
@@ -237,7 +243,10 @@
             },
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0020_explore",
-            "remove_assets": ["ornament"]
+            "remove_assets": ["ornament"],
+            "robot_start": {
+                "position": [-0.6, 0.0, 0.0]
+            }
         },
 
 
@@ -249,7 +258,10 @@
                 "task": "explore"
             },
             "max_runtime": 900.0,
-            "remove_assets": ["ornament", "bottle", "lamp"]
+            "remove_assets": ["ornament", "bottle", "lamp"],
+            "robot_start": {
+                "position": [-0.6, 0.0, 0.0]
+            }
         },
         {
             "name": "kujiale_0020_bottle-hidden",
@@ -262,7 +274,10 @@
             },
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0020_explore-hidden",
-            "remove_assets": ["ornament"]
+            "remove_assets": ["ornament"],
+            "robot_start": {
+                "position": [-0.6, 0.0, 0.0]
+            }
         },
         {
             "name": "kujiale_0020_lamp-hidden",
@@ -275,7 +290,10 @@
             },
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0020_explore-hidden",
-            "remove_assets": ["ornament"]
+            "remove_assets": ["ornament"],
+            "robot_start": {
+                "position": [-0.6, 0.0, 0.0]
+            }
         },
 
         {
@@ -286,7 +304,10 @@
                 "task": "explore"
             },
             "max_runtime": 900.0,
-            "remove_assets": ["ornament"]
+            "remove_assets": ["ornament"],
+            "robot_start": {
+                "position": [4.7, 0.0, 0.0]
+            }
         },
         {
             "name": "kujiale_0021_bowl",
@@ -299,7 +320,10 @@
             },
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0021_explore",
-            "remove_assets": ["ornament"]
+            "remove_assets": ["ornament"],
+            "robot_start": {
+                "position": [4.7, 0.0, 0.0]
+            }
         },
         {
             "name": "kujiale_0021_cup",
@@ -312,7 +336,10 @@
             },
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0021_explore",
-            "remove_assets": ["ornament"]
+            "remove_assets": ["ornament"],
+            "robot_start": {
+                "position": [4.7, 0.0, 0.0]
+            }
         },
         {
             "name": "kujiale_0021_book",
@@ -325,7 +352,10 @@
             },
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0021_explore",
-            "remove_assets": ["ornament"]
+            "remove_assets": ["ornament"],
+            "robot_start": {
+                "position": [4.7, 0.0, 0.0]
+            }
         },
 
         {
@@ -336,7 +366,10 @@
                 "task": "explore"
             },
             "max_runtime": 900.0,
-            "remove_assets": ["ornament", "bowl", "cup", "book"]
+            "remove_assets": ["ornament", "bowl", "cup", "book"],
+            "robot_start": {
+                "position": [4.7, 0.0, 0.0]
+            }
         },
         {
             "name": "kujiale_0021_bowl-hidden",
@@ -349,7 +382,10 @@
             },
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0021_explore-hidden",
-            "remove_assets": ["ornament"]
+            "remove_assets": ["ornament"],
+            "robot_start": {
+                "position": [4.7, 0.0, 0.0]
+            }
         },
         {
             "name": "kujiale_0021_cup-hidden",
@@ -362,7 +398,10 @@
             },
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0021_explore-hidden",
-            "remove_assets": ["ornament"]
+            "remove_assets": ["ornament"],
+            "robot_start": {
+                "position": [4.7, 0.0, 0.0]
+            }
         },
         {
             "name": "kujiale_0021_book-hidden",
@@ -375,7 +414,10 @@
             },
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0021_explore-hidden",
-            "remove_assets": ["ornament"]
+            "remove_assets": ["ornament"],
+            "robot_start": {
+                "position": [4.7, 0.0, 0.0]
+            }
         },
 
 
@@ -515,7 +557,10 @@
                 "task": "explore"
             },
             "max_runtime": 900.0,
-            "remove_assets": ["ornament", "cosmetic"]
+            "remove_assets": ["ornament", "cosmetic"],
+            "robot_start": {
+                "position": [-1.4, 0.2, 0.0]
+            }
         },
         {
             "name": "kujiale_0024_washingmachine",
@@ -528,7 +573,10 @@
             },
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0024_explore",
-            "remove_assets": ["ornament", "cosmetic"]
+            "remove_assets": ["ornament", "cosmetic"],
+            "robot_start": {
+                "position": [-1.4, 0.2, 0.0]
+            }
         },
         {
             "name": "kujiale_0024_book",
@@ -541,7 +589,10 @@
             },
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0024_explore",
-            "remove_assets": ["ornament", "cosmetic"]
+            "remove_assets": ["ornament", "cosmetic"],
+            "robot_start": {
+                "position": [-1.4, 0.2, 0.0]
+            }
         },
         {
             "name": "kujiale_0024_cup",
@@ -554,7 +605,10 @@
             },
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0024_explore",
-            "remove_assets": ["ornament", "cosmetic"]
+            "remove_assets": ["ornament", "cosmetic"],
+            "robot_start": {
+                "position": [-1.4, 0.2, 0.0]
+            }
         },
 
         {
@@ -565,7 +619,10 @@
                 "task": "explore"
             },
             "max_runtime": 900.0,
-            "remove_assets": ["ornament", "cosmetic", "washing_machine", "closestool", "book", "cup"]
+            "remove_assets": ["ornament", "cosmetic", "washing_machine", "closestool", "book", "cup"],
+            "robot_start": {
+                "position": [-1.4, 0.2, 0.0]
+            }
         },
         {
             "name": "kujiale_0024_washingmachine-hidden",
@@ -578,7 +635,10 @@
             },
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0024_explore-hidden",
-            "remove_assets": ["ornament", "cosmetic"]
+            "remove_assets": ["ornament", "cosmetic"],
+            "robot_start": {
+                "position": [-1.4, 0.2, 0.0]
+            }
         },
         {
             "name": "kujiale_0024_book-hidden",
@@ -591,7 +651,10 @@
             },
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0024_explore-hidden",
-            "remove_assets": ["ornament", "cosmetic"]
+            "remove_assets": ["ornament", "cosmetic"],
+            "robot_start": {
+                "position": [-1.4, 0.2, 0.0]
+            }
         },
         {
             "name": "kujiale_0024_cup-hidden",
@@ -604,7 +667,10 @@
             },
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0024_explore-hidden",
-            "remove_assets": ["ornament", "cosmetic"]
+            "remove_assets": ["ornament", "cosmetic"],
+            "robot_start": {
+                "position": [-1.4, 0.2, 0.0]
+            }
         },
 
 
@@ -616,7 +682,10 @@
                 "task": "explore"
             },
             "max_runtime": 900.0,
-            "remove_assets": ["ornament", "menorah"]
+            "remove_assets": ["ornament", "menorah"],
+            "robot_start": {
+                "position": [1.1, 0.0, 0.0]
+            }
         },
         {
             "name": "kujiale_0026_laptop",
@@ -629,7 +698,10 @@
             },
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0026_explore",
-            "remove_assets": ["ornament", "menorah"]
+            "remove_assets": ["ornament", "menorah"],
+            "robot_start": {
+                "position": [1.1, 0.0, 0.0]
+            }
         },
         {
             "name": "kujiale_0026_plate",
@@ -642,7 +714,10 @@
             },
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0026_explore",
-            "remove_assets": ["ornament", "menorah"]
+            "remove_assets": ["ornament", "menorah"],
+            "robot_start": {
+                "position": [1.1, 0.0, 0.0]
+            }
         },
 
 
@@ -654,7 +729,10 @@
                 "task": "explore"
             },
             "max_runtime": 900.0,
-            "remove_assets": ["ornament", "menorah", "office_supply", "plate", "wine_set"]
+            "remove_assets": ["ornament", "menorah", "office_supply", "plate", "wine_set"],
+            "robot_start": {
+                "position": [1.1, 0.0, 0.0]
+            }
         },
         {
             "name": "kujiale_0026_laptop-hidden",
@@ -667,7 +745,10 @@
             },
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0026_explore-hidden",
-            "remove_assets": ["ornament", "menorah"]
+            "remove_assets": ["ornament", "menorah"],
+            "robot_start": {
+                "position": [1.1, 0.0, 0.0]
+            }
         },
         {
             "name": "kujiale_0026_plate-hidden",
@@ -680,7 +761,10 @@
             },
             "max_runtime": 300.0,
             "initialmap_experiment": "kujiale_0026_explore-hidden",
-            "remove_assets": ["ornament", "menorah"]
+            "remove_assets": ["ornament", "menorah"],
+            "robot_start": {
+                "position": [1.1, 0.0, 0.0]
+            }
         }
     ]
 }
