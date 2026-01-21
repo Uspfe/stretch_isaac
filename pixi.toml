@@ -28,4 +28,4 @@ default = {features = [], solve-group = "default"}
 isaacsim = { version = "==5.1.0", extras = ["all", "extscache", "ros2"] }
 numpy = "*"
 scipy = "*"
-
+matplotlib = "*"

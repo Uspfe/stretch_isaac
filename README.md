@@ -88,6 +88,11 @@ This script starts IsaacSim and periodically prints information about the goal a
 <robot>{"time": 6.08333365060389, "position": {"x": -0.6012449264526367, "y": -8.089374750852585e-05, "z": 0.04939977824687958}, "orientation": {"w": 0.9999939203262329, "x": -0.0004203889984637499, "y": 0.0012234784662723541, "z": 0.0032800277695059776}, "linear_velocity": {"vx": -0.012691676616668701, "vy": -0.003575022565200925, "vz": 0.06355907768011093}}</robot>
 ```
 
-The `shortest_distance` is the length of the shortest path between robot start position and the closest given goal asset. Before simulation is started an 2D occupancy map of the scene is generated based on which the shortes path is computed. The result can be visualized with `--visualize-shortest-path`:
+The `shortest_distance` is the length of the shortest path between robot start position and the closest given goal asset. Before simulation is started a 2D occupancy map of the scene is generated based on which the shortest path is computed. The result can be visualized by providing `--visualize-shortest-path`:
 
 ![Example occupancy map and shortest path](.img/occ_map.png)
+
+For more information check
+```bash
+pixi run python standalone_sim.py -h
+```
