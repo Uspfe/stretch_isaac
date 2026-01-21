@@ -7,7 +7,9 @@ from isaacsim import SimulationApp
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run standalone simulation with optional scene selection. Given 'goal_asset', the shortest path to the goal asset is computed and its distance printed periodically. Additional assets can be spawned and existing assets removed based on substrings.")
+    parser = argparse.ArgumentParser(
+        description="Run standalone simulation with optional scene selection. Given 'goal_asset', the shortest path to the goal asset is computed and its distance printed periodically. Additional assets can be spawned and existing assets removed based on substrings."
+    )
     parser.add_argument(
         "--headless",
         action="store_true",
@@ -80,7 +82,7 @@ def parse_args() -> argparse.Namespace:
     )
 
     args = parser.parse_args()
-    
+
     if args.scene is not None and not args.scene.exists():
         raise FileNotFoundError(f"Scene file {args.scene} does not exist.")
 
@@ -118,11 +120,13 @@ def read_colors(csv_path: Path) -> dict:
             colors[row["object"]] = [float(row["r"]), float(row["g"]), float(row["b"])]
     return colors
 
+
 def parse_assets(raw_assets):
     assets = []
     for name, x, y, z, theta in raw_assets or []:
         assets.append((name, float(x), float(y), float(z), float(theta)))
     return assets
+
 
 def main(simulation_app, args: argparse.Namespace):
     args.asset = parse_assets(args.asset)
@@ -169,7 +173,9 @@ def main(simulation_app, args: argparse.Namespace):
         # compute shortest path to goal assets
         print("Computing shortest path to goals...")
         if len(goal_assets) > 0:
-            shortest_goal_distance, goal_positions, shortest_path = get_shortest_path_to_prims(goal_assets, start_position=np.array(args.robot_start[0:2]), root_prim_path=loaded_scene_root)
+            shortest_goal_distance, goal_positions, shortest_path = get_shortest_path_to_prims(
+                goal_assets, start_position=np.array(args.robot_start[0:2]), root_prim_path=loaded_scene_root
+            )
             if shortest_goal_distance is not None:
                 shortest_goal_distance -= 1.5  # viewing distance offset
                 print(f"Shortest distance to goal assets (with offset): {round(shortest_goal_distance, 2)}")
@@ -181,7 +187,7 @@ def main(simulation_app, args: argparse.Namespace):
     else:
         world = World()
         world.reset()
-    
+
     # add ground plane
     ground_plane = world.scene.add_default_ground_plane(prim_path=root_prim + "/defaultGroundPlane", z_position=0.05)
     if args.scene is not None:
@@ -210,7 +216,7 @@ def main(simulation_app, args: argparse.Namespace):
     stretch = Articulation(prim_path=str(prim_stretch.GetPath()) + "/stretch")
     stretch.set_world_pose(
         np.array([args.robot_start[0], args.robot_start[1], args.robot_start[2]]),
-        np.array([np.cos(np.deg2rad(args.robot_start[3])/2), 0, 0, np.sin(np.deg2rad(args.robot_start[3])/2)]),
+        np.array([np.cos(np.deg2rad(args.robot_start[3]) / 2), 0, 0, np.sin(np.deg2rad(args.robot_start[3]) / 2)]),
     )
     stretch.initialize()
 

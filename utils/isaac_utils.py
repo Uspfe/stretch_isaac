@@ -124,7 +124,12 @@ def get_shortest_path_to_prims(
         return None
     goal_positions = dump_prim_position(prims, print_output=False)
     occupancy_map, x, y, _ = compute_occupancy_map(
-        root_prim_path=root_prim_path, resolution=resolution, width_m=map_width, height_m=map_height, z_min=z_min, z_max=z_max
+        root_prim_path=root_prim_path,
+        resolution=resolution,
+        width_m=map_width,
+        height_m=map_height,
+        z_min=z_min,
+        z_max=z_max,
     )
     multi_dijkstra = MultiDijkstra(
         occupancy_map.T, resolution=resolution, origin=np.array([x[0], y[0]]), approx_downsample_resolution=None
