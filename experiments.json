@@ -2,8 +2,7 @@
     "experiments": [
         {
             "name": "kujiale_0004_explore",
-            "scene": "InteriorAgent/kujiale_0004/kujiale_0004.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0004/kujiale_0004.usda",
             "goal": {
                 "task": "explore"
             },
@@ -14,8 +13,7 @@
         },
         {
             "name": "kujiale_0004_book",
-            "scene": "InteriorAgent/kujiale_0004/kujiale_0004.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0004/kujiale_0004.usda",
             "goal": {
                 "task": "search",
                 "label": "book",
@@ -29,8 +27,7 @@
         },
         {
             "name": "kujiale_0004_bowl",
-            "scene": "InteriorAgent/kujiale_0004/kujiale_0004.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0004/kujiale_0004.usda",
             "goal": {
                 "task": "search",
                 "label": "bowl",
@@ -44,8 +41,7 @@
         },
         {
             "name": "kujiale_0004_wineglass",
-            "scene": "InteriorAgent/kujiale_0004/kujiale_0004.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0004/kujiale_0004.usda",
             "goal": {
                 "task": "search",
                 "label": "wine glass",
@@ -59,8 +55,7 @@
         },
         {
             "name": "kujiale_0004_plate",
-            "scene": "InteriorAgent/kujiale_0004/kujiale_0004.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0004/kujiale_0004.usda",
             "goal": {
                 "task": "search",
                 "label": "plate",
@@ -74,8 +69,7 @@
         },
         {
             "name": "kujiale_0004_explore-hidden",
-            "scene": "InteriorAgent/kujiale_0004/kujiale_0004.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0004/kujiale_0004.usda",
             "goal": {
                 "task": "explore"
             },
@@ -91,8 +85,7 @@
         },
         {
             "name": "kujiale_0004_book-hidden",
-            "scene": "InteriorAgent/kujiale_0004/kujiale_0004.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0004/kujiale_0004.usda",
             "goal": {
                 "task": "search",
                 "label": "book",
@@ -106,8 +99,7 @@
         },
         {
             "name": "kujiale_0004_bowl-hidden",
-            "scene": "InteriorAgent/kujiale_0004/kujiale_0004.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0004/kujiale_0004.usda",
             "goal": {
                 "task": "search",
                 "label": "bowl",
@@ -121,8 +113,7 @@
         },
         {
             "name": "kujiale_0004_wineglass-hidden",
-            "scene": "InteriorAgent/kujiale_0004/kujiale_0004.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0004/kujiale_0004.usda",
             "goal": {
                 "task": "search",
                 "label": "wine glass",
@@ -136,8 +127,7 @@
         },
         {
             "name": "kujiale_0004_plate-hidden",
-            "scene": "InteriorAgent/kujiale_0004/kujiale_0004.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0004/kujiale_0004.usda",
             "goal": {
                 "task": "search",
                 "label": "plate",
@@ -151,8 +141,7 @@
         },
         {
             "name": "kujiale_0008_explore",
-            "scene": "InteriorAgent/kujiale_0008/kujiale_0008.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0008/kujiale_0008.usda",
             "goal": {
                 "task": "explore"
             },
@@ -163,8 +152,7 @@
         },
         {
             "name": "kujiale_0008_book",
-            "scene": "InteriorAgent/kujiale_0008/kujiale_0008.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0008/kujiale_0008.usda",
             "goal": {
                 "task": "search",
                 "label": "book",
@@ -178,8 +166,7 @@
         },
         {
             "name": "kujiale_0008_cookingpot",
-            "scene": "InteriorAgent/kujiale_0008/kujiale_0008.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0008/kujiale_0008.usda",
             "goal": {
                 "task": "search",
                 "label": "cooking pot",
@@ -193,8 +180,7 @@
         },
         {
             "name": "kujiale_0008_explore-hidden",
-            "scene": "InteriorAgent/kujiale_0008/kujiale_0008.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0008/kujiale_0008.usda",
             "goal": {
                 "task": "explore"
             },
@@ -208,8 +194,7 @@
         },
         {
             "name": "kujiale_0008_book-hidden",
-            "scene": "InteriorAgent/kujiale_0008/kujiale_0008.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0008/kujiale_0008.usda",
             "goal": {
                 "task": "search",
                 "label": "book",
@@ -223,8 +208,7 @@
         },
         {
             "name": "kujiale_0008_cookingpot-hidden",
-            "scene": "InteriorAgent/kujiale_0008/kujiale_0008.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0008/kujiale_0008.usda",
             "goal": {
                 "task": "search",
                 "label": "cooking pot",
@@ -238,8 +222,7 @@
         },
         {
             "name": "kujiale_0020_explore",
-            "scene": "InteriorAgent/kujiale_0020/kujiale_0020.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0020/kujiale_0020.usda",
             "goal": {
                 "task": "explore"
             },
@@ -257,8 +240,7 @@
         },
         {
             "name": "kujiale_0020_bottle",
-            "scene": "InteriorAgent/kujiale_0020/kujiale_0020.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0020/kujiale_0020.usda",
             "goal": {
                 "task": "search",
                 "label": "bottle",
@@ -279,8 +261,7 @@
         },
         {
             "name": "kujiale_0020_lamp",
-            "scene": "InteriorAgent/kujiale_0020/kujiale_0020.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0020/kujiale_0020.usda",
             "goal": {
                 "task": "search",
                 "label": "lamp",
@@ -301,8 +282,7 @@
         },
         {
             "name": "kujiale_0020_explore-hidden",
-            "scene": "InteriorAgent/kujiale_0020/kujiale_0020.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0020/kujiale_0020.usda",
             "goal": {
                 "task": "explore"
             },
@@ -322,8 +302,7 @@
         },
         {
             "name": "kujiale_0020_bottle-hidden",
-            "scene": "InteriorAgent/kujiale_0020/kujiale_0020.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0020/kujiale_0020.usda",
             "goal": {
                 "task": "search",
                 "label": "bottle",
@@ -344,8 +323,7 @@
         },
         {
             "name": "kujiale_0020_lamp-hidden",
-            "scene": "InteriorAgent/kujiale_0020/kujiale_0020.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0020/kujiale_0020.usda",
             "goal": {
                 "task": "search",
                 "label": "lamp",
@@ -366,8 +344,7 @@
         },
         {
             "name": "kujiale_0021_explore",
-            "scene": "InteriorAgent/kujiale_0021/kujiale_0021.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0021/kujiale_0021.usda",
             "goal": {
                 "task": "explore"
             },
@@ -385,8 +362,7 @@
         },
         {
             "name": "kujiale_0021_bowl",
-            "scene": "InteriorAgent/kujiale_0021/kujiale_0021.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0021/kujiale_0021.usda",
             "goal": {
                 "task": "search",
                 "label": "bowl",
@@ -407,8 +383,7 @@
         },
         {
             "name": "kujiale_0021_cup",
-            "scene": "InteriorAgent/kujiale_0021/kujiale_0021.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0021/kujiale_0021.usda",
             "goal": {
                 "task": "search",
                 "label": "cup",
@@ -429,8 +404,7 @@
         },
         {
             "name": "kujiale_0021_book",
-            "scene": "InteriorAgent/kujiale_0021/kujiale_0021.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0021/kujiale_0021.usda",
             "goal": {
                 "task": "search",
                 "label": "book",
@@ -451,8 +425,7 @@
         },
         {
             "name": "kujiale_0021_explore-hidden",
-            "scene": "InteriorAgent/kujiale_0021/kujiale_0021.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0021/kujiale_0021.usda",
             "goal": {
                 "task": "explore"
             },
@@ -473,8 +446,7 @@
         },
         {
             "name": "kujiale_0021_bowl-hidden",
-            "scene": "InteriorAgent/kujiale_0021/kujiale_0021.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0021/kujiale_0021.usda",
             "goal": {
                 "task": "search",
                 "label": "bowl",
@@ -495,8 +467,7 @@
         },
         {
             "name": "kujiale_0021_cup-hidden",
-            "scene": "InteriorAgent/kujiale_0021/kujiale_0021.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0021/kujiale_0021.usda",
             "goal": {
                 "task": "search",
                 "label": "cup",
@@ -517,8 +488,7 @@
         },
         {
             "name": "kujiale_0021_book-hidden",
-            "scene": "InteriorAgent/kujiale_0021/kujiale_0021.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0021/kujiale_0021.usda",
             "goal": {
                 "task": "search",
                 "label": "book",
@@ -539,8 +509,7 @@
         },
         {
             "name": "kujiale_0022_explore",
-            "scene": "InteriorAgent/kujiale_0022/kujiale_0022.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0022/kujiale_0022.usda",
             "goal": {
                 "task": "explore"
             },
@@ -551,8 +520,7 @@
         },
         {
             "name": "kujiale_0022_knife",
-            "scene": "InteriorAgent/kujiale_0022/kujiale_0022.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0022/kujiale_0022.usda",
             "goal": {
                 "task": "search",
                 "label": "knife",
@@ -566,8 +534,7 @@
         },
         {
             "name": "kujiale_0022_cup",
-            "scene": "InteriorAgent/kujiale_0022/kujiale_0022.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0022/kujiale_0022.usda",
             "goal": {
                 "task": "search",
                 "label": "cup",
@@ -581,8 +548,7 @@
         },
         {
             "name": "kujiale_0022_bowl",
-            "scene": "InteriorAgent/kujiale_0022/kujiale_0022.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0022/kujiale_0022.usda",
             "goal": {
                 "task": "search",
                 "label": "bowl",
@@ -596,8 +562,7 @@
         },
         {
             "name": "kujiale_0022_stove",
-            "scene": "InteriorAgent/kujiale_0022/kujiale_0022.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0022/kujiale_0022.usda",
             "goal": {
                 "task": "search",
                 "label": "stove",
@@ -611,8 +576,7 @@
         },
         {
             "name": "kujiale_0022_explore-hidden",
-            "scene": "InteriorAgent/kujiale_0022/kujiale_0022.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0022/kujiale_0022.usda",
             "goal": {
                 "task": "explore"
             },
@@ -627,8 +591,7 @@
         },
         {
             "name": "kujiale_0022_knife-hidden",
-            "scene": "InteriorAgent/kujiale_0022/kujiale_0022.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0022/kujiale_0022.usda",
             "goal": {
                 "task": "search",
                 "label": "knife",
@@ -642,8 +605,7 @@
         },
         {
             "name": "kujiale_0022_cup-hidden",
-            "scene": "InteriorAgent/kujiale_0022/kujiale_0022.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0022/kujiale_0022.usda",
             "goal": {
                 "task": "search",
                 "label": "cup",
@@ -657,8 +619,7 @@
         },
         {
             "name": "kujiale_0022_bowl-hidden",
-            "scene": "InteriorAgent/kujiale_0022/kujiale_0022.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0022/kujiale_0022.usda",
             "goal": {
                 "task": "search",
                 "label": "bowl",
@@ -672,8 +633,7 @@
         },
         {
             "name": "kujiale_0022_stove-hidden",
-            "scene": "InteriorAgent/kujiale_0022/kujiale_0022.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0022/kujiale_0022.usda",
             "goal": {
                 "task": "search",
                 "label": "stove",
@@ -687,8 +647,7 @@
         },
         {
             "name": "kujiale_0024_explore",
-            "scene": "InteriorAgent/kujiale_0024/kujiale_0024.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0024/kujiale_0024.usda",
             "goal": {
                 "task": "explore"
             },
@@ -707,8 +666,7 @@
         },
         {
             "name": "kujiale_0024_washingmachine",
-            "scene": "InteriorAgent/kujiale_0024/kujiale_0024.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0024/kujiale_0024.usda",
             "goal": {
                 "task": "search",
                 "label": "washing machine",
@@ -730,8 +688,7 @@
         },
         {
             "name": "kujiale_0024_book",
-            "scene": "InteriorAgent/kujiale_0024/kujiale_0024.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0024/kujiale_0024.usda",
             "goal": {
                 "task": "search",
                 "label": "book",
@@ -753,8 +710,7 @@
         },
         {
             "name": "kujiale_0024_cup",
-            "scene": "InteriorAgent/kujiale_0024/kujiale_0024.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0024/kujiale_0024.usda",
             "goal": {
                 "task": "search",
                 "label": "cup",
@@ -776,8 +732,7 @@
         },
         {
             "name": "kujiale_0024_explore-hidden",
-            "scene": "InteriorAgent/kujiale_0024/kujiale_0024.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0024/kujiale_0024.usda",
             "goal": {
                 "task": "explore"
             },
@@ -800,8 +755,7 @@
         },
         {
             "name": "kujiale_0024_washingmachine-hidden",
-            "scene": "InteriorAgent/kujiale_0024/kujiale_0024.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0024/kujiale_0024.usda",
             "goal": {
                 "task": "search",
                 "label": "washing machine",
@@ -823,8 +777,7 @@
         },
         {
             "name": "kujiale_0024_book-hidden",
-            "scene": "InteriorAgent/kujiale_0024/kujiale_0024.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0024/kujiale_0024.usda",
             "goal": {
                 "task": "search",
                 "label": "book",
@@ -846,8 +799,7 @@
         },
         {
             "name": "kujiale_0024_cup-hidden",
-            "scene": "InteriorAgent/kujiale_0024/kujiale_0024.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0024/kujiale_0024.usda",
             "goal": {
                 "task": "search",
                 "label": "cup",
@@ -869,8 +821,7 @@
         },
         {
             "name": "kujiale_0026_explore",
-            "scene": "InteriorAgent/kujiale_0026/kujiale_0026.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0026/kujiale_0026.usda",
             "goal": {
                 "task": "explore"
             },
@@ -889,8 +840,7 @@
         },
         {
             "name": "kujiale_0026_laptop",
-            "scene": "InteriorAgent/kujiale_0026/kujiale_0026.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0026/kujiale_0026.usda",
             "goal": {
                 "task": "search",
                 "label": "laptop",
@@ -912,8 +862,7 @@
         },
         {
             "name": "kujiale_0026_plate",
-            "scene": "InteriorAgent/kujiale_0026/kujiale_0026.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0026/kujiale_0026.usda",
             "goal": {
                 "task": "search",
                 "label": "plate",
@@ -935,8 +884,7 @@
         },
         {
             "name": "kujiale_0026_explore-hidden",
-            "scene": "InteriorAgent/kujiale_0026/kujiale_0026.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0026/kujiale_0026.usda",
             "goal": {
                 "task": "explore"
             },
@@ -958,8 +906,7 @@
         },
         {
             "name": "kujiale_0026_laptop-hidden",
-            "scene": "InteriorAgent/kujiale_0026/kujiale_0026.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0026/kujiale_0026.usda",
             "goal": {
                 "task": "search",
                 "label": "laptop",
@@ -981,8 +928,7 @@
         },
         {
             "name": "kujiale_0026_plate-hidden",
-            "scene": "InteriorAgent/kujiale_0026/kujiale_0026.usda",
-            "lighting": "camera",
+            "scene": "kujiale_0026/kujiale_0026.usda",
             "goal": {
                 "task": "search",
                 "label": "plate",
@@ -1004,8 +950,7 @@
         },
         {
             "name": "kujiale_0004_explore_moved",
-            "scene": "InteriorAgent/kujiale_0004/kujiale_0004.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0004/kujiale_0004.usda",
             "goal": {
                 "task": "explore"
             },
@@ -1026,8 +971,7 @@
         },
         {
             "name": "kujiale_0004_book_moved",
-            "scene": "InteriorAgent/kujiale_0004/kujiale_0004.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0004/kujiale_0004.usda",
             "goal": {
                 "task": "search",
                 "label": "book",
@@ -1049,8 +993,7 @@
         },
         {
             "name": "kujiale_0004_bowl_moved",
-            "scene": "InteriorAgent/kujiale_0004/kujiale_0004.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0004/kujiale_0004.usda",
             "goal": {
                 "task": "search",
                 "label": "bowl",
@@ -1072,8 +1015,7 @@
         },
         {
             "name": "kujiale_0004_wineglass_moved",
-            "scene": "InteriorAgent/kujiale_0004/kujiale_0004.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0004/kujiale_0004.usda",
             "goal": {
                 "task": "search",
                 "label": "wine glass",
@@ -1095,8 +1037,7 @@
         },
         {
             "name": "kujiale_0004_plate_moved",
-            "scene": "InteriorAgent/kujiale_0004/kujiale_0004.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0004/kujiale_0004.usda",
             "goal": {
                 "task": "search",
                 "label": "plate",
@@ -1118,8 +1059,7 @@
         },
         {
             "name": "kujiale_0008_explore_moved",
-            "scene": "InteriorAgent/kujiale_0008/kujiale_0008.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0008/kujiale_0008.usda",
             "goal": {
                 "task": "explore"
             },
@@ -1140,8 +1080,7 @@
         },
         {
             "name": "kujiale_0008_book_moved",
-            "scene": "InteriorAgent/kujiale_0008/kujiale_0008.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0008/kujiale_0008.usda",
             "goal": {
                 "task": "search",
                 "label": "book",
@@ -1163,8 +1102,7 @@
         },
         {
             "name": "kujiale_0008_cookingpot_moved",
-            "scene": "InteriorAgent/kujiale_0008/kujiale_0008.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0008/kujiale_0008.usda",
             "goal": {
                 "task": "search",
                 "label": "cooking pot",
@@ -1186,8 +1124,7 @@
         },
         {
             "name": "kujiale_0008_plate_moved",
-            "scene": "InteriorAgent/kujiale_0008/kujiale_0008.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0008/kujiale_0008.usda",
             "goal": {
                 "task": "search",
                 "label": "plate",
@@ -1209,8 +1146,7 @@
         },
         {
             "name": "kujiale_0008_lamp_moved",
-            "scene": "InteriorAgent/kujiale_0008/kujiale_0008.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0008/kujiale_0008.usda",
             "goal": {
                 "task": "search",
                 "label": "lamp",
@@ -1232,8 +1168,7 @@
         },
         {
             "name": "kujiale_0020_explore_moved",
-            "scene": "InteriorAgent/kujiale_0020/kujiale_0020.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0020/kujiale_0020.usda",
             "goal": {
                 "task": "explore"
             },
@@ -1259,8 +1194,7 @@
         },
         {
             "name": "kujiale_0020_bottle_moved",
-            "scene": "InteriorAgent/kujiale_0020/kujiale_0020.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0020/kujiale_0020.usda",
             "goal": {
                 "task": "search",
                 "label": "bottle",
@@ -1287,8 +1221,7 @@
         },
         {
             "name": "kujiale_0020_potted-plant_moved",
-            "scene": "InteriorAgent/kujiale_0020/kujiale_0020.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0020/kujiale_0020.usda",
             "goal": {
                 "task": "search",
                 "label": "potted plant",
@@ -1315,8 +1248,7 @@
         },
         {
             "name": "kujiale_0020_cup_moved",
-            "scene": "InteriorAgent/kujiale_0020/kujiale_0020.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0020/kujiale_0020.usda",
             "goal": {
                 "task": "search",
                 "label": "cup",
@@ -1344,8 +1276,7 @@
         },
         {
             "name": "kujiale_0021_explore_moved",
-            "scene": "InteriorAgent/kujiale_0021/kujiale_0021.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0021/kujiale_0021.usda",
             "goal": {
                 "task": "explore"
             },
@@ -1372,8 +1303,7 @@
         },
         {
             "name": "kujiale_0021_coffee_table_moved",
-            "scene": "InteriorAgent/kujiale_0021/kujiale_0021.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0021/kujiale_0021.usda",
             "goal": {
                 "task": "search",
                 "label": "coffee table",
@@ -1404,8 +1334,7 @@
         },
         {
             "name": "kujiale_0021_potted_plant_moved",
-            "scene": "InteriorAgent/kujiale_0021/kujiale_0021.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0021/kujiale_0021.usda",
             "goal": {
                 "task": "search",
                 "label": "potted plant",
@@ -1436,8 +1365,7 @@
         },
         {
             "name": "kujiale_0021_chair_moved",
-            "scene": "InteriorAgent/kujiale_0021/kujiale_0021.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0021/kujiale_0021.usda",
             "goal": {
                 "task": "search",
                 "label": "chair",
@@ -1468,8 +1396,7 @@
         },
         {
             "name": "kujiale_0022_explore_moved",
-            "scene": "InteriorAgent/kujiale_0022/kujiale_0022.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0022/kujiale_0022.usda",
             "goal": {
                 "task": "explore"
             },
@@ -1485,8 +1412,7 @@
         },
         {
             "name": "kujiale_0022_cup_moved",
-            "scene": "InteriorAgent/kujiale_0022/kujiale_0022.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0022/kujiale_0022.usda",
             "goal": {
                 "task": "search",
                 "label": "cup",
@@ -1502,8 +1428,7 @@
         },
         {
             "name": "kujiale_0024_explore_moved",
-            "scene": "InteriorAgent/kujiale_0024/kujiale_0024.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0024/kujiale_0024.usda",
             "goal": {
                 "task": "explore"
             },
@@ -1529,8 +1454,7 @@
         },
         {
             "name": "kujiale_0024_pillow_moved",
-            "scene": "InteriorAgent/kujiale_0024/kujiale_0024.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0024/kujiale_0024.usda",
             "goal": {
                 "task": "search",
                 "label": "pillow",
@@ -1559,8 +1483,7 @@
         },
         {
             "name": "kujiale_0026_explore_moved",
-            "scene": "InteriorAgent/kujiale_0026/kujiale_0026.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0026/kujiale_0026.usda",
             "goal": {
                 "task": "explore"
             },
@@ -1587,8 +1510,7 @@
         },
         {
             "name": "kujiale_0026_chair_moved",
-            "scene": "InteriorAgent/kujiale_0026/kujiale_0026.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0026/kujiale_0026.usda",
             "goal": {
                 "task": "search",
                 "label": "chair",
@@ -1617,8 +1539,7 @@
         },
         {
             "name": "kujiale_0026_pillow_moved",
-            "scene": "InteriorAgent/kujiale_0026/kujiale_0026.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0026/kujiale_0026.usda",
             "goal": {
                 "task": "search",
                 "label": "pillow",
@@ -1646,8 +1567,7 @@
         },
         {
             "name": "kujiale_0030_explore_moved",
-            "scene": "InteriorAgent/kujiale_0030/kujiale_0030.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0030/kujiale_0030.usda",
             "goal": {
                 "task": "explore"
             },
@@ -1674,8 +1594,7 @@
         },
         {
             "name": "kujiale_0030_bowl_moved",
-            "scene": "InteriorAgent/kujiale_0030/kujiale_0030.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0030/kujiale_0030.usda",
             "goal": {
                 "task": "search",
                 "label": "bowl",
@@ -1706,8 +1625,7 @@
         },
         {
             "name": "kujiale_0030_cup_moved",
-            "scene": "InteriorAgent/kujiale_0030/kujiale_0030.usda",
-            "lighting": "stage",
+            "scene": "kujiale_0030/kujiale_0030.usda",
             "goal": {
                 "task": "search",
                 "label": "cup",

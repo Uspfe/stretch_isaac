@@ -1,202 +1,93 @@
-# IsaacSim setup for the Hello Robot Stretch 3
+# IsaacSim Evaluation Suite for Object-Goal Navigation in Semi-Static Scenes
 
-Files to simulate Hello Robot's [Stretch 3](https://hello-robot.com/stretch-3-product) in [IsaacSim](https://developer.nvidia.com/isaac/sim) with ROS2 integration.
-
-<p align="center">
-  <img src=".img/default.png" alt="alt text" height="400">
-  <img src=".img/kitchen.png" alt="alt text" height="400">
-</p>
+Contains specifications as well as code to load the 60 tasks object-goal navigation tasks used in the paper ["Where Did I Leave My Glasses? Open-Vocabulary Semantic Exploration in Real-World Semi-Static Environments"](https://utiasdsl.github.io/semi-static-semantic-exploration/).
 
 ## Prerequisites
 
-- NVIDIA GPU with up-to-date drivers
-- [Pixi](https://pixi.prefix.dev/latest/installation/)
+- NVIDIA GPU with up-to-date drivers (for IsaacSim)
+- Installed [Pixi](https://pixi.prefix.dev/latest/installation/)
+- Downloaded [InteriorAgent](https://huggingface.co/datasets/spatialverse/InteriorAgent) dataset in directory "$InteriorAgentRoot"
 
 
 ## Quick Start
-This repository provides an Isaac Sim environment for deploying and testing the Hello Robot Stretch with ROS 2.
+
+This repository uses a [Pixi](https://pixi.prefix.dev/latest/installation/) environment which includes a IsaacSim installation.
+
 A minimal end-to-end workflow is as follows:
 1. Install [Pixi](https://pixi.prefix.dev/latest/installation/)
 2. Activate/install the Pixi environment (this installs IsaacSim)
     ```bash
       pixi shell
     ```
-3. Start IsaacSim (or use the [scripted start below](#simulation-script))
+3. Check that IsaacSim is working by running
     ```bash
       isaacsim
     ```
-3. Open the [provided example scene](stretch_isaac/example_stage/hm3d_example.usd) from the Habitat Matterport 3D
-4. Import the [stretch3.usd](stretch_isaac/robot_usd/stretch3.usd) (make sure its root prim is called "/map". See [here](#manual-robot-import))
-5. Play the simulation.
-6. Test ROS2 integration (Seperate terminal. To run these you need a ROS2 installation, which is not included in the minimal ROS2 install included with IsaacSim.)
-    - `ros2 topic echo /tf`
-    - `ros2 topic pub /stretch/cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.2}}"`
 
-This README explains each step in more detail below.
+## Loading experiments
 
-## Manual robot import
+[experiments.json](experiments.json) is setup as
+```json
+{
+  "experiments": [
+    {
+      "name": "kujiale_0020_explore_moved",                    // unique name of the experiment   
+      "scene": "InteriorAgent/kujiale_0020/kujiale_0020.usda", // path to the scene file   
+      "goal": {                                                // what kind of task the robot has ("explore" or "search")   
+          "task": "explore"                                       
+      },                                                       
+      "max_runtime": 900.0,                                    // maximum runtime of this experiment   
+      "remove_assets": [                                       // assets to remove from this scene (by substring match, i.e., here all prims with substring "bottle" are removed)   
+        "bottle",
+      ],                                                          
+      "exclude_remove_assets": [                               // assets to NOT remove (by substring match)   
+        "bottle_0012"                               
+      ],                                                          
+      "robot_start": { "position": [ -0.6, 0.0, 0.0 ] }        // starting position of the robot   
+    },                                                              
 
-If your scene does not already include the robot:
-  - Import `robot_usd/stretch3.usd` into the current stage
-  - Use **File > Import Reference** or drag-and-drop it via the content browser
-  - In the scene graph, make sure to import the robot below the root prim `/map` as the name of this prim is used as the global reference frame when publishing to ROS
-  ![scene tree](.img/scene_tree.png)
+    {                                                              
+      "name": "kujiale_0020_bottle_moved",                        
+      "scene": "InteriorAgent/kujiale_0020/kujiale_0020.usda",    
+      "initialmap_experiment": "kujiale_0020_explore_moved",   // if provided, the map generated during this experiment should be pre-loaded
+      "goal": {                                                   
+          "task": "search",                                    // search tasks provide some more task information
+          "label": "bottle",                                   // the label the robot is instructed to search for
+          "asset": "bottle_0010",                              // the specific goal asset(s) (by substring match), the simulation script returns the position(s) of the goal asset(s) for evaluation    
+          "prior_map_object": "bottle_0012"                    // the corresponding goal asset which was present in the "initialmap_experiment", useful for evaluation
+      },                                                          
+      "max_runtime": 300.0,                                       
+      "remove_assets": [                                          
+        "ornament",                                             
+        "bottle",                                               
+      ],                                                          
+      "exclude_remove_assets": [                                  
+        "bottle_0010"                                           
+      ],                                                          
+      "robot_start": { "position": [-0.6, 0.0, 0.0] }             
+    },                                                               
+    ...
+  ]
+}
+```
 
-## Simulation script
+Some of these properties should be given to the robot controller, such as `initialmap_experiment`, some to the simulation script `standalone_sim.py`. For example, `kujiale_0020_bottle_moved` is loaded with
+```bash
+pixi run python standalone_sim.py \
+  --scene $InteriorAgentRoot/kujiale_0020/kujiale_0020.usda \
+  --robot-start -0.6 0.0 0.0 0.0 \
+  --gasset bottle_0010 \
+  --rasset ornament bottle \
+  --rasset-exclude bottle_0010
+```
 
-- `pixi run python standalone_sim.py` to launch IsaacSim loading an empty scene (only ground plane)
-- `pixi run python standalone_sim.py --scene ./stretch_isaac/example_stage/hm3d_example.usd` to load the provided example scene
-- `pixi run python standalone_sim.py --help` to check available options
+This script starts IsaacSim and periodically prints information about the goal asset and the robot state:
 
-> API Documentation of [IsaacSim](https://docs.isaacsim.omniverse.nvidia.com/5.1.0/py/source/extensions/isaacsim.core.api/docs/index.html)
+```
+<goals>{"bottle_0010": {"x": -3.59, "y": 5.19, "z": 0.95}, "shortest_distance": 4.94}</goals>
+<robot>{"time": 6.08333365060389, "position": {"x": -0.6012449264526367, "y": -8.089374750852585e-05, "z": 0.04939977824687958}, "orientation": {"w": 0.9999939203262329, "x": -0.0004203889984637499, "y": 0.0012234784662723541, "z": 0.0032800277695059776}, "linear_velocity": {"vx": -0.012691676616668701, "vy": -0.003575022565200925, "vz": 0.06355907768011093}}</robot>
+```
 
+The `shortest_distance` is the length of the shortest path between robot start position and the closest given goal asset. Before simulation is started an 2D occupancy map of the scene is generated based on which the shortes path is computed. The result can be visualized with `--visualize-shortest-path`:
 
-## Directory Layout
-
-- `robot_usd/` - ready made robot usd for import into other scenes (ROS enabled)
-- `example_scene_hm3d.usd/` - Issac Sim USD stage with the imported robot (Habitat Matterport 3D dataset)
-- `Robot_Import_Files/` - modified URDF with updated collision meshes
-- `README.md` - this file
-- `standalone_sim.py` - python script for [scripted simulation ](#simulation-script)
-
-## ros2-bridge
-
-- `ros2-bridge` plugin enabled in Isaac Sim 
-  - It is already automatically enabled. 
-  - Go to Window > Extensions, find "ROS 2 Bridge," and verify it is **Enabled**.
-
-## Recreating the ready-made robot models
-
-### Import Process
-
-Adapted from the Isaac Sim docs:  
-- https://docs.isaacsim.omniverse.nvidia.com/5.1.0/importer_exporter/importers_exporters.html 
-- https://docs.isaacsim.omniverse.nvidia.com/5.1.0/ros2_tutorials/ros2_landing_page.html
-
-1. **Create or Open an Isaac Sim Scene**  
-   You may either open an existing prepared scene or create your own.
-   > **DON'T WORRY** 
-   >
-   >It may take a **long time during the first launch**. (roughly 15 min for work stations and 20 min for laptops)
-
-   - InteriorAgent Dataset: https://huggingface.co/datasets/spatialverse/InteriorAgent/tree/main
-
-   - `example_scene_hm3d.usd`
-      - Contains an HM3D environment with Stretch already imported  
-       Dataset: https://github.com/matterport/habitat-matterport-3dresearch
-
-    > **Note:**  
-    > If you try to open either of these two scenes, make sure you have downloaded the corresponding datasets and that Isaac Sim can locate them on your local system.  
-    >  
-    > After opening one of these scenes, you may skip **Step 2**.
-
-   You may also use built-in Isaac Sim assets:
-   - Navigate to **Content > Isaac Sim** to browse default environments and props.
-
-   **Physics note:**  
-   For objects to interact physically with the robot:
-
-   - Select the object in the **Stage** window  
-   - Right-click → **Add > Physics > Rigid Body**  
-   - Add a **Collider Preset**
-
-2. **Import the Stretch as USD File** 
-  If your scene does not already include the robot:
-    - Import `robot_usd/stretch3.usd` into the current stage
-    - Use **File > Import Reference** so the robot remains reusable
-    - In the scene graph, make sure to import the robot below the root prim `/map` as the name of this prim is used as the global reference frame when publishing to ROS
-
-    Model details:
-    - Original URDF used square collision meshes on the wheels, which caused physics artifacts.  
-    - Replace them with cylinders; see `Robot_Import_Files/`.  
-    - Enable self-collision and set the base link movable.
-  
-3. **Tune joint dynamics**
-  Proper joint tuning is critical for stable simulation.
-
-  - **Wheels** 
-    - Joints: `joint_right_wheel` and `joint_left_wheel`
-    - Recommended parameters
-      - Armature: 2.0 kg·m² (reduces jitter)  
-      - Damping: 1000
-      - Stiffness: 0  
-      - Max torque and break force clamped
-
-    > Where to set this in the UI:
-    > - Select the wheel joint in the Stage window
-    > - Open the Property panel
-    > - Navigate to **Physics > Articulation > Drive**
-
-  - **Positional joints (arm, lift, wrist)**  
-    - Armature: 0.1 kg·m²  
-    - Damping & stiffness hand-tuned via GUI  
-      - **Tools > Robotics > Asset Editors > Gain Tuner**
-
-4. **ROS 2 Bridge configuration**
-  (synchronized to system time)  
-    - Adapt or reuse OmniGraph templates from **Window > Graph Editors > Action Graph**
-
-      <img src=".img/action_graph.png" width="50%">
-
-    - **ROS2 Topic Overview**
-    
-      | Component | Topics                           | Direction | Purpose                     |
-      | :--------- | :-------------------------------- | :--------- | :--------------------------- |
-      | Base      | `/stretch/cmd_vel`               | Sub       | Differential drive control  |
-      | Joints    | `/joint_command`, `/joint_state` | Sub / Pub | Joint commands and feedback |
-      | Camera    | `/spectacular_ai/*`              | Pub       | RGB, depth, point cloud     |
-      | Lidar     | `/scan_filtered`                 | Pub       | Laser scan                  |
-      | TF        | `/tf`, `/tf_static`              | Pub       | Coordinate transforms       |
-      | State     | `/state_estimator/pose_filtered` | Pub       | Estimated robot pose        |
-      | Homing    | `/is_homed`                      | Pub / Srv | Robot homing status         |
-
-### Launching the Simulation
-1. Enter the Pixi environment in the root diretory of this repo:
-    ```bash
-    pixi shell
-    ```
-2. Launch Isaac Sim
-    ```bash
-    isaacsim
-    ```
-3. Open a scene or import the Stretch USD.
-4. Press **Play** to start the simulation.
-5. Run ROS2 nodes in a separate terminal.
-
-### Testing
-
-1. **Base Motion Control (`/stretch/cmd_vel`)**
-  - This command controls the differential drive of the robot base.
-      ```bash
-      ros2 topic pub --once /stretch/cmd_vel \
-      geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.5}}"
-      ```
-    > Expected behavior:
-    > - The robot rotates in place.
-    > 
-    > If the robot does not move:
-    > - Check wheel material
-    > - Check wheel joint drive settings
-    > - Verify ground plane has a collider
-    > - Ensure simulation is playing
-
-2. **Joint-Level Control (`/joint_command`)**
-  - This command controls individual articulated joints (arm, lift, wrist).
-    ```bash
-    ros2 topic pub /joint_command \
-    sensor_msgs/JointState "{name: ['joint_lift'], position: [0.2]}"
-    ```
-
-  - Verify feedback:
-    ```bash
-    ros2 topic echo /joint_state
-    ```
-    > Expected behavior:
-    > - The joint moves to the commanded position.
-    > - `/joint_state` reflects the correct value.
-    > 
-    > If the joints do not move:
-    > - Check the lower/ upper limit or max force value of the joints.
-    > - Recheck armature, damping, and stiffness values.
-
-    <img src=".img/joint_drive.png" width="50%">
+![Example occupancy map and shortest path](.img/occ_map.png)

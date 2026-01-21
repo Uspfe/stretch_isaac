@@ -1,9 +1,9 @@
 [workspace]
-authors = ["Uspfe <benjamin.bogenberger@tum.de>"]
+authors = ["Benjamin Bogenberger <benjamin.bogenberger@tum.de>"]
 channels = ["conda-forge"]
-name = "issac_sim"
+name = "issac_sim_eval"
 platforms = ["linux-64"]
-version = "0.1.0"
+version = "1.0.0"
 
 [dependencies]
 python = "3.11.*"
@@ -21,14 +21,8 @@ isaac_sim_package_path = "$PIXI_PROJECT_ROOT/.pixi/envs/default/lib/python3.11/s
 ROS_DISTRO = "humble"
 LD_LIBRARY_PATH = "$LD_LIBRARY_PATH:$isaac_sim_package_path/exts/isaacsim.ros2.bridge/humble/lib"
 
-[feature.fastrtps.activation.env]
-# use Fast-RTPS as RMW implementation
-RMW_IMPLEMENTATION="rmw_fastrtps_cpp"
-ROS_DISCOVERY_SERVER="127.0.0.1:14520"
-
 [environments]
 default = {features = [], solve-group = "default"}
-fastrtps = {features = ["fastrtps"], solve-group = "default"}
 
 [pypi-dependencies]
 isaacsim = { version = "==5.1.0", extras = ["all", "extscache", "ros2"] }

@@ -1,5 +1,4 @@
 import argparse
-import csv
 from pathlib import Path
 
 import numpy as np
@@ -80,6 +79,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Disable the ground plane.",
     )
+    parser.add_argument(
+        "--visualize-shortest-path",
+        action="store_true",
+        help="Visualize the shortest path to the goal asset with matplotlib.",
+    )
 
     args = parser.parse_args()
 
@@ -110,15 +114,6 @@ from utils.isaac_utils import (  # noqa: E402
     set_prim_pose,
     switch_lighting,
 )
-
-
-def read_colors(csv_path: Path) -> dict:
-    colors = {}
-    with csv_path.open() as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            colors[row["object"]] = [float(row["r"]), float(row["g"]), float(row["b"])]
-    return colors
 
 
 def parse_assets(raw_assets):
@@ -174,10 +169,12 @@ def main(simulation_app, args: argparse.Namespace):
         print("Computing shortest path to goals...")
         if len(goal_assets) > 0:
             shortest_goal_distance, goal_positions, shortest_path = get_shortest_path_to_prims(
-                goal_assets, start_position=np.array(args.robot_start[0:2]), root_prim_path=loaded_scene_root
+                goal_assets,
+                start_position=np.array(args.robot_start[0:2]),
+                root_prim_path=loaded_scene_root,
+                visualize=args.visualize_shortest_path,
             )
             if shortest_goal_distance is not None:
-                shortest_goal_distance -= 1.5  # viewing distance offset
                 print(f"Shortest distance to goal assets (with offset): {round(shortest_goal_distance, 2)}")
 
         # disable scene collider if requested
