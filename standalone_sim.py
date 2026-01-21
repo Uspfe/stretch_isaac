@@ -26,6 +26,14 @@ def parse_args() -> argparse.Namespace:
         default=None,
     )
     parser.add_argument(
+        "--robot-start",
+        nargs=4,
+        type=float,
+        metavar=("X", "Y", "Z", "THETA"),
+        help="Starting position and orientation of the robot (in deg).",
+        default=(0.0, 0.0, 0.0, 0.0),
+    )
+    parser.add_argument(
         "--lighting",
         type=str,
         choices=["camera", "stage"],
@@ -396,10 +404,6 @@ def disable_collision(root_prim: Usd.Prim):
         attr = collision_api.GetPrim().GetAttribute("physics:collisionEnabled")
         if attr:
             attr.Set(False)
-        # attr.Set(False)
-        # if not attr:
-        #     # Create it if missing
-        #     attr = collision_api.GetPrim().CreateAttribute("physics:collisionEnabled", Sdf.ValueTypeNames.Bool)
 
 
 def main(simulation_app, args: argparse.Namespace):
@@ -519,6 +523,10 @@ def main(simulation_app, args: argparse.Namespace):
     world.reset()
 
     stretch = Articulation(prim_path=str(prim_stretch.GetPath()) + "/stretch")
+    stretch.set_world_pose(
+        np.array([args.robot_start[0], args.robot_start[1], args.robot_start[2]]),
+        np.array([np.cos(np.deg2rad(args.robot_start[3])/2), 0, 0, np.sin(np.deg2rad(args.robot_start[3])/2)]),
+    )
     stretch.initialize()
 
     print_pose_interval: int = 33
