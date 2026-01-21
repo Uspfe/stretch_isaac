@@ -1,0 +1,1738 @@
+{
+    "experiments": [
+        {
+            "name": "kujiale_0004_explore",
+            "scene": "InteriorAgent/kujiale_0004/kujiale_0004.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "explore"
+            },
+            "max_runtime": 900.0,
+            "remove_assets": [
+                "ornament"
+            ]
+        },
+        {
+            "name": "kujiale_0004_book",
+            "scene": "InteriorAgent/kujiale_0004/kujiale_0004.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "book",
+                "asset": "book"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0004_explore",
+            "remove_assets": [
+                "ornament"
+            ]
+        },
+        {
+            "name": "kujiale_0004_bowl",
+            "scene": "InteriorAgent/kujiale_0004/kujiale_0004.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "bowl",
+                "asset": "bowl"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0004_explore",
+            "remove_assets": [
+                "ornament"
+            ]
+        },
+        {
+            "name": "kujiale_0004_wineglass",
+            "scene": "InteriorAgent/kujiale_0004/kujiale_0004.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "wine glass",
+                "asset": "wine_set"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0004_explore",
+            "remove_assets": [
+                "ornament"
+            ]
+        },
+        {
+            "name": "kujiale_0004_plate",
+            "scene": "InteriorAgent/kujiale_0004/kujiale_0004.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "plate",
+                "asset": "tray"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0004_explore",
+            "remove_assets": [
+                "ornament"
+            ]
+        },
+        {
+            "name": "kujiale_0004_explore-hidden",
+            "scene": "InteriorAgent/kujiale_0004/kujiale_0004.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "explore"
+            },
+            "max_runtime": 900.0,
+            "remove_assets": [
+                "ornament",
+                "bowl",
+                "book",
+                "office_supply",
+                "tray",
+                "wine_set"
+            ]
+        },
+        {
+            "name": "kujiale_0004_book-hidden",
+            "scene": "InteriorAgent/kujiale_0004/kujiale_0004.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "book",
+                "asset": "book"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0004_explore-hidden",
+            "remove_assets": [
+                "ornament"
+            ]
+        },
+        {
+            "name": "kujiale_0004_bowl-hidden",
+            "scene": "InteriorAgent/kujiale_0004/kujiale_0004.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "bowl",
+                "asset": "bowl"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0004_explore-hidden",
+            "remove_assets": [
+                "ornament"
+            ]
+        },
+        {
+            "name": "kujiale_0004_wineglass-hidden",
+            "scene": "InteriorAgent/kujiale_0004/kujiale_0004.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "wine glass",
+                "asset": "wine_set"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0004_explore-hidden",
+            "remove_assets": [
+                "ornament"
+            ]
+        },
+        {
+            "name": "kujiale_0004_plate-hidden",
+            "scene": "InteriorAgent/kujiale_0004/kujiale_0004.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "plate",
+                "asset": "tray"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0004_explore-hidden",
+            "remove_assets": [
+                "ornament"
+            ]
+        },
+        {
+            "name": "kujiale_0008_explore",
+            "scene": "InteriorAgent/kujiale_0008/kujiale_0008.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "explore"
+            },
+            "max_runtime": 900.0,
+            "remove_assets": [
+                "ornament"
+            ]
+        },
+        {
+            "name": "kujiale_0008_book",
+            "scene": "InteriorAgent/kujiale_0008/kujiale_0008.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "search",
+                "label": "book",
+                "asset": "book"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0008_explore",
+            "remove_assets": [
+                "ornament"
+            ]
+        },
+        {
+            "name": "kujiale_0008_cookingpot",
+            "scene": "InteriorAgent/kujiale_0008/kujiale_0008.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "search",
+                "label": "cooking pot",
+                "asset": "cookware"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0008_explore",
+            "remove_assets": [
+                "ornament"
+            ]
+        },
+        {
+            "name": "kujiale_0008_explore-hidden",
+            "scene": "InteriorAgent/kujiale_0008/kujiale_0008.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "explore"
+            },
+            "max_runtime": 900.0,
+            "remove_assets": [
+                "ornament",
+                "book",
+                "wine_set",
+                "cookware"
+            ]
+        },
+        {
+            "name": "kujiale_0008_book-hidden",
+            "scene": "InteriorAgent/kujiale_0008/kujiale_0008.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "search",
+                "label": "book",
+                "asset": "book"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0008_explore-hidden",
+            "remove_assets": [
+                "ornament"
+            ]
+        },
+        {
+            "name": "kujiale_0008_cookingpot-hidden",
+            "scene": "InteriorAgent/kujiale_0008/kujiale_0008.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "search",
+                "label": "cooking pot",
+                "asset": "cookware"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0008_explore-hidden",
+            "remove_assets": [
+                "ornament"
+            ]
+        },
+        {
+            "name": "kujiale_0020_explore",
+            "scene": "InteriorAgent/kujiale_0020/kujiale_0020.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "explore"
+            },
+            "max_runtime": 900.0,
+            "remove_assets": [
+                "ornament"
+            ],
+            "robot_start": {
+                "position": [
+                    -0.6,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0020_bottle",
+            "scene": "InteriorAgent/kujiale_0020/kujiale_0020.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "search",
+                "label": "bottle",
+                "asset": "bottle"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0020_explore",
+            "remove_assets": [
+                "ornament"
+            ],
+            "robot_start": {
+                "position": [
+                    -0.6,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0020_lamp",
+            "scene": "InteriorAgent/kujiale_0020/kujiale_0020.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "search",
+                "label": "lamp",
+                "asset": "lamp"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0020_explore",
+            "remove_assets": [
+                "ornament"
+            ],
+            "robot_start": {
+                "position": [
+                    -0.6,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0020_explore-hidden",
+            "scene": "InteriorAgent/kujiale_0020/kujiale_0020.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "explore"
+            },
+            "max_runtime": 900.0,
+            "remove_assets": [
+                "ornament",
+                "bottle",
+                "lamp"
+            ],
+            "robot_start": {
+                "position": [
+                    -0.6,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0020_bottle-hidden",
+            "scene": "InteriorAgent/kujiale_0020/kujiale_0020.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "search",
+                "label": "bottle",
+                "asset": "bottle"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0020_explore-hidden",
+            "remove_assets": [
+                "ornament"
+            ],
+            "robot_start": {
+                "position": [
+                    -0.6,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0020_lamp-hidden",
+            "scene": "InteriorAgent/kujiale_0020/kujiale_0020.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "search",
+                "label": "lamp",
+                "asset": "lamp"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0020_explore-hidden",
+            "remove_assets": [
+                "ornament"
+            ],
+            "robot_start": {
+                "position": [
+                    -0.6,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0021_explore",
+            "scene": "InteriorAgent/kujiale_0021/kujiale_0021.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "explore"
+            },
+            "max_runtime": 900.0,
+            "remove_assets": [
+                "ornament"
+            ],
+            "robot_start": {
+                "position": [
+                    4.7,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0021_bowl",
+            "scene": "InteriorAgent/kujiale_0021/kujiale_0021.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "bowl",
+                "asset": "bowl"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0021_explore",
+            "remove_assets": [
+                "ornament"
+            ],
+            "robot_start": {
+                "position": [
+                    4.7,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0021_cup",
+            "scene": "InteriorAgent/kujiale_0021/kujiale_0021.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "cup",
+                "asset": "cup"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0021_explore",
+            "remove_assets": [
+                "ornament"
+            ],
+            "robot_start": {
+                "position": [
+                    4.7,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0021_book",
+            "scene": "InteriorAgent/kujiale_0021/kujiale_0021.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "book",
+                "asset": "book"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0021_explore",
+            "remove_assets": [
+                "ornament"
+            ],
+            "robot_start": {
+                "position": [
+                    4.7,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0021_explore-hidden",
+            "scene": "InteriorAgent/kujiale_0021/kujiale_0021.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "explore"
+            },
+            "max_runtime": 900.0,
+            "remove_assets": [
+                "ornament",
+                "bowl",
+                "cup",
+                "book"
+            ],
+            "robot_start": {
+                "position": [
+                    4.7,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0021_bowl-hidden",
+            "scene": "InteriorAgent/kujiale_0021/kujiale_0021.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "bowl",
+                "asset": "bowl"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0021_explore-hidden",
+            "remove_assets": [
+                "ornament"
+            ],
+            "robot_start": {
+                "position": [
+                    4.7,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0021_cup-hidden",
+            "scene": "InteriorAgent/kujiale_0021/kujiale_0021.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "cup",
+                "asset": "cup"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0021_explore-hidden",
+            "remove_assets": [
+                "ornament"
+            ],
+            "robot_start": {
+                "position": [
+                    4.7,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0021_book-hidden",
+            "scene": "InteriorAgent/kujiale_0021/kujiale_0021.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "book",
+                "asset": "book"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0021_explore-hidden",
+            "remove_assets": [
+                "ornament"
+            ],
+            "robot_start": {
+                "position": [
+                    4.7,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0022_explore",
+            "scene": "InteriorAgent/kujiale_0022/kujiale_0022.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "explore"
+            },
+            "max_runtime": 900.0,
+            "remove_assets": [
+                "ornament"
+            ]
+        },
+        {
+            "name": "kujiale_0022_knife",
+            "scene": "InteriorAgent/kujiale_0022/kujiale_0022.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "knife",
+                "asset": "knife"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0022_explore",
+            "remove_assets": [
+                "ornament"
+            ]
+        },
+        {
+            "name": "kujiale_0022_cup",
+            "scene": "InteriorAgent/kujiale_0022/kujiale_0022.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "cup",
+                "asset": "cup"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0022_explore",
+            "remove_assets": [
+                "ornament"
+            ]
+        },
+        {
+            "name": "kujiale_0022_bowl",
+            "scene": "InteriorAgent/kujiale_0022/kujiale_0022.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "bowl",
+                "asset": "bowl"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0022_explore",
+            "remove_assets": [
+                "ornament"
+            ]
+        },
+        {
+            "name": "kujiale_0022_stove",
+            "scene": "InteriorAgent/kujiale_0022/kujiale_0022.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "stove",
+                "asset": "other_cooker"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0022_explore",
+            "remove_assets": [
+                "ornament"
+            ]
+        },
+        {
+            "name": "kujiale_0022_explore-hidden",
+            "scene": "InteriorAgent/kujiale_0022/kujiale_0022.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "explore"
+            },
+            "max_runtime": 900.0,
+            "remove_assets": [
+                "ornament",
+                "knife",
+                "cup",
+                "bowl",
+                "other_cooker"
+            ]
+        },
+        {
+            "name": "kujiale_0022_knife-hidden",
+            "scene": "InteriorAgent/kujiale_0022/kujiale_0022.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "knife",
+                "asset": "knife"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0022_explore-hidden",
+            "remove_assets": [
+                "ornament"
+            ]
+        },
+        {
+            "name": "kujiale_0022_cup-hidden",
+            "scene": "InteriorAgent/kujiale_0022/kujiale_0022.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "cup",
+                "asset": "cup"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0022_explore-hidden",
+            "remove_assets": [
+                "ornament"
+            ]
+        },
+        {
+            "name": "kujiale_0022_bowl-hidden",
+            "scene": "InteriorAgent/kujiale_0022/kujiale_0022.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "bowl",
+                "asset": "bowl"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0022_explore-hidden",
+            "remove_assets": [
+                "ornament"
+            ]
+        },
+        {
+            "name": "kujiale_0022_stove-hidden",
+            "scene": "InteriorAgent/kujiale_0022/kujiale_0022.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "stove",
+                "asset": "other_cooker"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0022_explore-hidden",
+            "remove_assets": [
+                "ornament"
+            ]
+        },
+        {
+            "name": "kujiale_0024_explore",
+            "scene": "InteriorAgent/kujiale_0024/kujiale_0024.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "explore"
+            },
+            "max_runtime": 900.0,
+            "remove_assets": [
+                "ornament",
+                "cosmetic"
+            ],
+            "robot_start": {
+                "position": [
+                    -1.4,
+                    0.2,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0024_washingmachine",
+            "scene": "InteriorAgent/kujiale_0024/kujiale_0024.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "washing machine",
+                "asset": "washing_machine"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0024_explore",
+            "remove_assets": [
+                "ornament",
+                "cosmetic"
+            ],
+            "robot_start": {
+                "position": [
+                    -1.4,
+                    0.2,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0024_book",
+            "scene": "InteriorAgent/kujiale_0024/kujiale_0024.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "book",
+                "asset": "book"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0024_explore",
+            "remove_assets": [
+                "ornament",
+                "cosmetic"
+            ],
+            "robot_start": {
+                "position": [
+                    -1.4,
+                    0.2,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0024_cup",
+            "scene": "InteriorAgent/kujiale_0024/kujiale_0024.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "cup",
+                "asset": "cup"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0024_explore",
+            "remove_assets": [
+                "ornament",
+                "cosmetic"
+            ],
+            "robot_start": {
+                "position": [
+                    -1.4,
+                    0.2,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0024_explore-hidden",
+            "scene": "InteriorAgent/kujiale_0024/kujiale_0024.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "explore"
+            },
+            "max_runtime": 900.0,
+            "remove_assets": [
+                "ornament",
+                "cosmetic",
+                "washing_machine",
+                "closestool",
+                "book",
+                "cup"
+            ],
+            "robot_start": {
+                "position": [
+                    -1.4,
+                    0.2,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0024_washingmachine-hidden",
+            "scene": "InteriorAgent/kujiale_0024/kujiale_0024.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "washing machine",
+                "asset": "washing_machine"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0024_explore-hidden",
+            "remove_assets": [
+                "ornament",
+                "cosmetic"
+            ],
+            "robot_start": {
+                "position": [
+                    -1.4,
+                    0.2,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0024_book-hidden",
+            "scene": "InteriorAgent/kujiale_0024/kujiale_0024.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "book",
+                "asset": "book"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0024_explore-hidden",
+            "remove_assets": [
+                "ornament",
+                "cosmetic"
+            ],
+            "robot_start": {
+                "position": [
+                    -1.4,
+                    0.2,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0024_cup-hidden",
+            "scene": "InteriorAgent/kujiale_0024/kujiale_0024.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "cup",
+                "asset": "cup"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0024_explore-hidden",
+            "remove_assets": [
+                "ornament",
+                "cosmetic"
+            ],
+            "robot_start": {
+                "position": [
+                    -1.4,
+                    0.2,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0026_explore",
+            "scene": "InteriorAgent/kujiale_0026/kujiale_0026.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "explore"
+            },
+            "max_runtime": 900.0,
+            "remove_assets": [
+                "ornament",
+                "menorah"
+            ],
+            "robot_start": {
+                "position": [
+                    1.1,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0026_laptop",
+            "scene": "InteriorAgent/kujiale_0026/kujiale_0026.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "laptop",
+                "asset": "office_supply_0028"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0026_explore",
+            "remove_assets": [
+                "ornament",
+                "menorah"
+            ],
+            "robot_start": {
+                "position": [
+                    1.1,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0026_plate",
+            "scene": "InteriorAgent/kujiale_0026/kujiale_0026.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "plate",
+                "asset": "plate"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0026_explore",
+            "remove_assets": [
+                "ornament",
+                "menorah"
+            ],
+            "robot_start": {
+                "position": [
+                    1.1,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0026_explore-hidden",
+            "scene": "InteriorAgent/kujiale_0026/kujiale_0026.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "explore"
+            },
+            "max_runtime": 900.0,
+            "remove_assets": [
+                "ornament",
+                "menorah",
+                "office_supply",
+                "plate",
+                "wine_set"
+            ],
+            "robot_start": {
+                "position": [
+                    1.1,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0026_laptop-hidden",
+            "scene": "InteriorAgent/kujiale_0026/kujiale_0026.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "laptop",
+                "asset": "office_supply_0028"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0026_explore-hidden",
+            "remove_assets": [
+                "ornament",
+                "menorah"
+            ],
+            "robot_start": {
+                "position": [
+                    1.1,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0026_plate-hidden",
+            "scene": "InteriorAgent/kujiale_0026/kujiale_0026.usda",
+            "lighting": "camera",
+            "goal": {
+                "task": "search",
+                "label": "plate",
+                "asset": "plate"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0026_explore-hidden",
+            "remove_assets": [
+                "ornament",
+                "menorah"
+            ],
+            "robot_start": {
+                "position": [
+                    1.1,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0004_explore_moved",
+            "scene": "InteriorAgent/kujiale_0004/kujiale_0004.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "explore"
+            },
+            "max_runtime": 900.0,
+            "remove_assets": [
+                "ornament",
+                "book",
+                "bowl",
+                "tray",
+                "wine_set"
+            ],
+            "exclude_remove_assets": [
+                "book_0010",
+                "bowl_0004",
+                "tray_0002",
+                "wine_set_0001"
+            ]
+        },
+        {
+            "name": "kujiale_0004_book_moved",
+            "scene": "InteriorAgent/kujiale_0004/kujiale_0004.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "search",
+                "label": "book",
+                "asset": "book_0011",
+                "prior_map_object": "book_0010"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0004_explore_moved",
+            "remove_assets": [
+                "ornament",
+                "book",
+                "bowl",
+                "tray",
+                "wine_set"
+            ],
+            "exclude_remove_assets": [
+                "book_0011"
+            ]
+        },
+        {
+            "name": "kujiale_0004_bowl_moved",
+            "scene": "InteriorAgent/kujiale_0004/kujiale_0004.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "search",
+                "label": "bowl",
+                "asset": "bowl_0000",
+                "prior_map_object": "bowl_0004"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0004_explore_moved",
+            "remove_assets": [
+                "ornament",
+                "book",
+                "bowl",
+                "tray",
+                "wine_set"
+            ],
+            "exclude_remove_assets": [
+                "bowl_0000"
+            ]
+        },
+        {
+            "name": "kujiale_0004_wineglass_moved",
+            "scene": "InteriorAgent/kujiale_0004/kujiale_0004.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "search",
+                "label": "wine glass",
+                "asset": "wine_set_0002",
+                "prior_map_object": "wine_set_0001"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0004_explore_moved",
+            "remove_assets": [
+                "ornament",
+                "book",
+                "bowl",
+                "tray",
+                "wine_set"
+            ],
+            "exclude_remove_assets": [
+                "wine_set_0002"
+            ]
+        },
+        {
+            "name": "kujiale_0004_plate_moved",
+            "scene": "InteriorAgent/kujiale_0004/kujiale_0004.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "search",
+                "label": "plate",
+                "asset": "tray_0001",
+                "prior_map_object": "tray_0002"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0004_explore_moved",
+            "remove_assets": [
+                "ornament",
+                "book",
+                "bowl",
+                "tray",
+                "wine_set"
+            ],
+            "exclude_remove_assets": [
+                "tray_0001"
+            ]
+        },
+        {
+            "name": "kujiale_0008_explore_moved",
+            "scene": "InteriorAgent/kujiale_0008/kujiale_0008.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "explore"
+            },
+            "max_runtime": 900.0,
+            "remove_assets": [
+                "ornament",
+                "book",
+                "cookware",
+                "plate",
+                "lamp"
+            ],
+            "exclude_remove_assets": [
+                "book_0008",
+                "cookware_0000",
+                "plate_0001",
+                "lamp_0001"
+            ]
+        },
+        {
+            "name": "kujiale_0008_book_moved",
+            "scene": "InteriorAgent/kujiale_0008/kujiale_0008.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "search",
+                "label": "book",
+                "asset": "book_0001",
+                "prior_map_object": "book_0008"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0008_explore_moved",
+            "remove_assets": [
+                "ornament",
+                "book",
+                "cookware",
+                "plate",
+                "lamp"
+            ],
+            "exclude_remove_assets": [
+                "book_0001"
+            ]
+        },
+        {
+            "name": "kujiale_0008_cookingpot_moved",
+            "scene": "InteriorAgent/kujiale_0008/kujiale_0008.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "search",
+                "label": "cooking pot",
+                "asset": "cookware_0001",
+                "prior_map_object": "cookware_0000"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0008_explore_moved",
+            "remove_assets": [
+                "ornament",
+                "book",
+                "cookware",
+                "plate",
+                "lamp"
+            ],
+            "exclude_remove_assets": [
+                "cookware_0001"
+            ]
+        },
+        {
+            "name": "kujiale_0008_plate_moved",
+            "scene": "InteriorAgent/kujiale_0008/kujiale_0008.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "search",
+                "label": "plate",
+                "asset": "plate_0021",
+                "prior_map_object": "plate_0001"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0008_explore_moved",
+            "remove_assets": [
+                "ornament",
+                "book",
+                "cookware",
+                "plate",
+                "lamp"
+            ],
+            "exclude_remove_assets": [
+                "plate_0021"
+            ]
+        },
+        {
+            "name": "kujiale_0008_lamp_moved",
+            "scene": "InteriorAgent/kujiale_0008/kujiale_0008.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "search",
+                "label": "lamp",
+                "asset": "lamp_0000",
+                "prior_map_object": "lamp_0001"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0008_explore_moved",
+            "remove_assets": [
+                "ornament",
+                "book",
+                "cookware",
+                "plate",
+                "lamp"
+            ],
+            "exclude_remove_assets": [
+                "lamp_0000"
+            ]
+        },
+        {
+            "name": "kujiale_0020_explore_moved",
+            "scene": "InteriorAgent/kujiale_0020/kujiale_0020.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "explore"
+            },
+            "max_runtime": 900.0,
+            "remove_assets": [
+                "ornament",
+                "bottle",
+                "flower",
+                "cup"
+            ],
+            "exclude_remove_assets": [
+                "bottle_0012",
+                "flower_0003",
+                "cup_0003"
+            ],
+            "robot_start": {
+                "position": [
+                    -0.6,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0020_bottle_moved",
+            "scene": "InteriorAgent/kujiale_0020/kujiale_0020.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "search",
+                "label": "bottle",
+                "asset": "bottle_0010",
+                "prior_map_object": "bottle_0012"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0020_explore_moved",
+            "remove_assets": [
+                "ornament",
+                "bottle",
+                "flower"
+            ],
+            "exclude_remove_assets": [
+                "bottle_0010"
+            ],
+            "robot_start": {
+                "position": [
+                    -0.6,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0020_potted-plant_moved",
+            "scene": "InteriorAgent/kujiale_0020/kujiale_0020.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "search",
+                "label": "potted plant",
+                "asset": "flower_0000",
+                "prior_map_object": "flower_0003"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0020_explore_moved",
+            "remove_assets": [
+                "ornament",
+                "bottle",
+                "flower"
+            ],
+            "exclude_remove_assets": [
+                "flower_0000"
+            ],
+            "robot_start": {
+                "position": [
+                    -0.6,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0020_cup_moved",
+            "scene": "InteriorAgent/kujiale_0020/kujiale_0020.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "search",
+                "label": "cup",
+                "asset": "cup_0004",
+                "prior_map_object": "cup_0003"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0020_explore_moved",
+            "remove_assets": [
+                "ornament",
+                "bottle",
+                "flower",
+                "cup"
+            ],
+            "exclude_remove_assets": [
+                "cup_0004"
+            ],
+            "robot_start": {
+                "position": [
+                    -0.6,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0021_explore_moved",
+            "scene": "InteriorAgent/kujiale_0021/kujiale_0021.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "explore"
+            },
+            "max_runtime": 900.0,
+            "remove_assets": [
+                "ornament",
+                "table",
+                "flower",
+                "chair"
+            ],
+            "exclude_remove_assets": [
+                "dining_table",
+                "table_0002",
+                "flower_0002",
+                "chair_0004"
+            ],
+            "robot_start": {
+                "position": [
+                    4.7,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0021_coffee_table_moved",
+            "scene": "InteriorAgent/kujiale_0021/kujiale_0021.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "search",
+                "label": "coffee table",
+                "asset": "table_0001",
+                "prior_map_object": "table_0002"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0021_explore_moved",
+            "remove_assets": [
+                "ornament",
+                "table",
+                "flower",
+                "chair"
+            ],
+            "exclude_remove_assets": [
+                "dining_table",
+                "table_0001",
+                "flower_0002",
+                "chair_0004"
+            ],
+            "robot_start": {
+                "position": [
+                    4.7,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0021_potted_plant_moved",
+            "scene": "InteriorAgent/kujiale_0021/kujiale_0021.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "search",
+                "label": "potted plant",
+                "asset": "flower_0003",
+                "prior_map_object": "flower_0002"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0021_explore_moved",
+            "remove_assets": [
+                "ornament",
+                "table",
+                "flower",
+                "chair"
+            ],
+            "exclude_remove_assets": [
+                "dining_table",
+                "table_0002",
+                "flower_0003",
+                "chair_0004"
+            ],
+            "robot_start": {
+                "position": [
+                    4.7,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0021_chair_moved",
+            "scene": "InteriorAgent/kujiale_0021/kujiale_0021.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "search",
+                "label": "chair",
+                "asset": "chair_0003",
+                "prior_map_object": "chair_0004"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0021_explore_moved",
+            "remove_assets": [
+                "ornament",
+                "table",
+                "flower",
+                "chair"
+            ],
+            "exclude_remove_assets": [
+                "dining_table",
+                "table_0002",
+                "flower_0003",
+                "chair_0003"
+            ],
+            "robot_start": {
+                "position": [
+                    4.7,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0022_explore_moved",
+            "scene": "InteriorAgent/kujiale_0022/kujiale_0022.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "explore"
+            },
+            "max_runtime": 900.0,
+            "remove_assets": [
+                "ornament",
+                "cup"
+            ],
+            "exclude_remove_assets": [
+                "cup_0000",
+                "kitchenware_0000"
+            ]
+        },
+        {
+            "name": "kujiale_0022_cup_moved",
+            "scene": "InteriorAgent/kujiale_0022/kujiale_0022.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "search",
+                "label": "cup",
+                "asset": "tea_set_0003",
+                "prior_map_object": "cup_0000"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0022_explore_moved",
+            "remove_assets": [
+                "ornament",
+                "cup"
+            ]
+        },
+        {
+            "name": "kujiale_0024_explore_moved",
+            "scene": "InteriorAgent/kujiale_0024/kujiale_0024.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "explore"
+            },
+            "max_runtime": 900.0,
+            "remove_assets": [
+                "ornament",
+                "pillow",
+                "chair",
+                "cup"
+            ],
+            "exclude_remove_assets": [
+                "throw_pillow_0003",
+                "chair_0000",
+                "cup_0003"
+            ],
+            "robot_start": {
+                "position": [
+                    -1.4,
+                    0.2,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0024_pillow_moved",
+            "scene": "InteriorAgent/kujiale_0024/kujiale_0024.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "search",
+                "label": "pillow",
+                "asset": "pillow_0000",
+                "exclude_goal_asset": "throw",
+                "prior_map_object": "throw_pillow_0003"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0024_explore_moved",
+            "remove_assets": [
+                "ornament",
+                "pillow",
+                "chair",
+                "sofa"
+            ],
+            "exclude_remove_assets": [
+                "pillow_0000"
+            ],
+            "robot_start": {
+                "position": [
+                    -1.4,
+                    0.2,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0026_explore_moved",
+            "scene": "InteriorAgent/kujiale_0026/kujiale_0026.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "explore"
+            },
+            "max_runtime": 900.0,
+            "remove_assets": [
+                "ornament",
+                "menorah",
+                "book",
+                "pillow",
+                "chair"
+            ],
+            "exclude_remove_assets": [
+                "book_0001",
+                "throw_pillow_0004",
+                "chair_0003"
+            ],
+            "robot_start": {
+                "position": [
+                    1.1,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0026_chair_moved",
+            "scene": "InteriorAgent/kujiale_0026/kujiale_0026.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "search",
+                "label": "chair",
+                "asset": "chair_0004",
+                "prior_map_object": "chair_0003"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0026_explore_moved",
+            "remove_assets": [
+                "ornament",
+                "menorah",
+                "book",
+                "pillow",
+                "chair"
+            ],
+            "exclude_remove_assets": [
+                "chair_0004"
+            ],
+            "robot_start": {
+                "position": [
+                    1.1,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0026_pillow_moved",
+            "scene": "InteriorAgent/kujiale_0026/kujiale_0026.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "search",
+                "label": "pillow",
+                "asset": "throw_pillow_0007",
+                "prior_map_object": "throw_pillow_0004"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0026_explore_moved",
+            "remove_assets": [
+                "ornament",
+                "menorah",
+                "book",
+                "pillow"
+            ],
+            "exclude_remove_assets": [
+                "throw_pillow_0007"
+            ],
+            "robot_start": {
+                "position": [
+                    1.1,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0030_explore_moved",
+            "scene": "InteriorAgent/kujiale_0030/kujiale_0030.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "explore"
+            },
+            "max_runtime": 900.0,
+            "remove_assets": [
+                "ornament",
+                "vase",
+                "bowl",
+                "tea_set",
+                "cup"
+            ],
+            "exclude_remove_assets": [
+                "cup_0000",
+                "kitchenware_0002",
+                "tea_set_0001"
+            ],
+            "robot_start": {
+                "position": [
+                    0.45,
+                    -0.5,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0030_bowl_moved",
+            "scene": "InteriorAgent/kujiale_0030/kujiale_0030.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "search",
+                "label": "bowl",
+                "asset": "bowl_0001",
+                "prior_map_object": "kitchenware_0002"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0030_explore_moved",
+            "remove_assets": [
+                "ornament",
+                "vase",
+                "bowl",
+                "tea_set",
+                "cup"
+            ],
+            "exclude_remove_assets": [
+                "bowl_0000",
+                "bowl_0001",
+                "bowl_0002"
+            ],
+            "robot_start": {
+                "position": [
+                    0.45,
+                    -0.5,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "kujiale_0030_cup_moved",
+            "scene": "InteriorAgent/kujiale_0030/kujiale_0030.usda",
+            "lighting": "stage",
+            "goal": {
+                "task": "search",
+                "label": "cup",
+                "asset": "tea_set_0000",
+                "prior_map_object": "tea_set_0001"
+            },
+            "max_runtime": 300.0,
+            "initialmap_experiment": "kujiale_0030_explore_moved",
+            "remove_assets": [
+                "ornament",
+                "vase",
+                "bowl",
+                "tea_set",
+                "cup"
+            ],
+            "exclude_remove_assets": [
+                "tea_set_0000"
+            ],
+            "robot_start": {
+                "position": [
+                    0.45,
+                    -0.5,
+                    0.0
+                ]
+            }
+        }
+    ]
+}
