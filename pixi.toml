@@ -18,8 +18,8 @@ extra-index-urls = ["https://pypi.nvidia.com"]
 [activation.env]
 # use isaac sim's internal minimal ros installation (see https://docs.isaacsim.omniverse.nvidia.com/5.1.0/installation/install_ros.html)
 isaac_sim_package_path = "$PIXI_PROJECT_ROOT/.pixi/envs/default/lib/python3.11/site-packages/isaacsim"
-ROS_DISTRO = "humble"
-LD_LIBRARY_PATH = "$LD_LIBRARY_PATH:$isaac_sim_package_path/exts/isaacsim.ros2.bridge/humble/lib"
+ROS_DISTRO = "jazzy"
+LD_LIBRARY_PATH = "$LD_LIBRARY_PATH:$isaac_sim_package_path/exts/isaacsim.ros2.bridge/jazzy/lib"
 
 [feature.fastrtps.activation.env]
 # use Fast-RTPS as RMW implementation
