@@ -88,6 +88,13 @@ def parse_args() -> argparse.Namespace:
         default=[],
     )
     parser.add_argument(
+        "--occupancy-map",
+        type=Path,
+        help="Path to save the scene's ground-truth occupancy grid to (.npz in the format of stretch_mpc's "
+        "static_map_publisher), then keep simulating.",
+        default=None,
+    )
+    parser.add_argument(
         "--disable-scene-collider",
         action="store_true",
         help="Disable the scene collider.",
@@ -102,6 +109,9 @@ def parse_args() -> argparse.Namespace:
 
     if args.generate_map is not None and args.generate_map.suffix != ".npz":
         raise ValueError("generate-map path must end with .npz")
+
+    if args.occupancy_map is not None and (args.occupancy_map.suffix != ".npz" or args.scene is None):
+        raise ValueError("occupancy-map path must end with .npz and needs a --scene")
     
     if args.scene is not None and not args.scene.exists():
         raise FileNotFoundError(f"Scene file {args.scene} does not exist.")
@@ -230,8 +240,47 @@ def compute_occupancy_map(
     return occ, xs, ys, color
 
 
+def has_floor(x: float, y: float) -> bool:
+    physx = omni.physx.get_physx_scene_query_interface()
+    return physx.raycast_closest(carb.Float3(x, y, 0.2), carb.Float3(0, 0, -1), 0.4, False)["hit"]
+
+
+def save_occupancy_grid(path: Path, scene_root: str, resolution: float = 0.1, size_m: float = 20.0) -> None:
+    """Writes the scene's occupancy as a ROS OccupancyGrid in the map frame.
+
+    Occupied: an obstacle between 0.2 m and 1.8 m height. Free: floor without obstacle. Unknown: no floor, e.g.
+    outside a scanned building, which a mapper would not have observed either.
+    """
+    occupancy, xs, ys, _ = compute_occupancy_map(
+        root_prim_path=scene_root, resolution=resolution, width_m=size_m, height_m=size_m, z_min=0.2, z_max=1.8
+    )
+    floor = np.array([[has_floor(x, y) for y in ys] for x in xs])
+    path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(
+        path,
+        data=np.where(occupancy.T > 0, 100, np.where(floor.T, 0, -1)).astype(np.int8).flatten(),
+        frame_id=np.asarray("map"),
+        stamp_sec=np.int64(0),
+        stamp_nanosec=np.uint32(0),
+        map_load_time_sec=np.int64(0),
+        map_load_time_nanosec=np.uint32(0),
+        resolution=np.float32(resolution),
+        width=np.uint32(len(xs)),
+        height=np.uint32(len(ys)),
+        origin_position_x=np.float64(xs[0] - resolution / 2),
+        origin_position_y=np.float64(ys[0] - resolution / 2),
+        origin_position_z=np.float64(0.0),
+        origin_orientation_x=np.float64(0.0),
+        origin_orientation_y=np.float64(0.0),
+        origin_orientation_z=np.float64(0.0),
+        origin_orientation_w=np.float64(1.0),
+    )
+    print(f"Saved occupancy grid to {path}")
+
+
 def get_shortest_path_to_prims(
     prims: list[Usd.Prim],
+    scene_root: str,
     start_position: np.ndarray = np.zeros(2),
     resolution: float = 0.1,
     map_width: float = 20.0,
@@ -244,7 +293,7 @@ def get_shortest_path_to_prims(
         return None
     goal_positions = dump_prim_position(prims, print_output=False)
     occupancy_map, x, y, _ = compute_occupancy_map(
-        root_prim_path="/Root", resolution=resolution, width_m=map_width, height_m=map_height, z_min=z_min, z_max=z_max
+        root_prim_path=scene_root, resolution=resolution, width_m=map_width, height_m=map_height, z_min=z_min, z_max=z_max
     )
     multi_dijkstra = MultiDijkstra(
         occupancy_map.T, resolution=resolution, origin=np.array([x[0], y[0]]), approx_downsample_resolution=None
@@ -421,7 +470,7 @@ def main(simulation_app, args: argparse.Namespace):
         print(f"Loading scene from {args.scene}")
         omni.usd.get_context().open_stage(str(args.scene))
         world = World()
-        _scene = world.stage.GetPrimAtPath("/Root")
+        _scene = world.stage.GetPrimAtPath("/Root") or world.stage.GetDefaultPrim()
         hide_assets = get_toplevel_prims_substring(_scene, args.rasset, True)
         for prim in hide_assets:
             if any(exclude in prim.GetName() for exclude in args.rasset_exclude):
@@ -444,7 +493,7 @@ def main(simulation_app, args: argparse.Namespace):
 
         print("Computing shortest path to goals...")
         if len(goal_assets) > 0:
-            shortest_goal_distance, goal_positions, shortest_path = get_shortest_path_to_prims(goal_assets)
+            shortest_goal_distance, goal_positions, shortest_path = get_shortest_path_to_prims(goal_assets, str(_scene.GetPath()))
             if shortest_goal_distance is not None:
                 shortest_goal_distance -= 1.5  # viewing distance offset
                 print(f"Shortest distance to goal assets (with offset): {round(shortest_goal_distance, 2)}")
@@ -455,7 +504,7 @@ def main(simulation_app, args: argparse.Namespace):
         if args.generate_map is not None:
             prim_colors = read_colors(Path("./interior_agent_objects.csv"))
             _occupancy_map, x, y, colored_map = compute_occupancy_map(
-                root_prim_path="/Root",
+                root_prim_path=str(_scene.GetPath()),
                 resolution=0.1,
                 width_m=20,
                 height_m=20,
@@ -493,6 +542,9 @@ def main(simulation_app, args: argparse.Namespace):
             time.sleep(1.0)  # ensure file is written
             print(f"Saved map to {args.generate_map}")
             exit(0)
+
+        if args.occupancy_map is not None:
+            save_occupancy_grid(args.occupancy_map, str(_scene.GetPath()))
 
         if args.disable_scene_collider:
             print(f"Disabling collision for scene {_scene.GetPath()}")

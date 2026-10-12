@@ -26,7 +26,7 @@ A minimal end-to-end workflow is as follows:
       isaacsim
     ```
 3. Open the [provided example scene](stretch_isaac/example_stage/hm3d_example.usd) from the Habitat Matterport 3D
-4. Import the [stretch3.usd](stretch_isaac/robot_usd/stretch3.usd) (make sure its root prim is called "/map". See [here](#manual-robot-import))
+4. Import the [stretch3_no_arm_collider.usd](robot_usd/stretch3_no_arm_collider.usd) (make sure it is imported below the root prim "/map". See [here](#manual-robot-import)). Only this asset has the [Nav2 ROS interface](#ros-interface-nav2); `stretch3.usd` still carries the older MPC-era graphs.
 5. Play the simulation.
 6. Test ROS2 integration (Seperate terminal. To run these you need a ROS2 installation, which is not included in the minimal ROS2 install included with IsaacSim.)
     - `ros2 topic echo /tf`
@@ -37,7 +37,7 @@ This README explains each step in more detail below.
 ## Manual robot import
 
 If your scene does not already include the robot:
-  - Import `robot_usd/stretch3.usd` into the current stage
+  - Import `robot_usd/stretch3_no_arm_collider.usd` into the current stage
   - Use **File > Import Reference** or drag-and-drop it via the content browser
   - In the scene graph, make sure to import the robot below the root prim `/map` as the name of this prim is used as the global reference frame when publishing to ROS
   ![scene tree](.img/scene_tree.png)
@@ -46,7 +46,41 @@ If your scene does not already include the robot:
 
 - `pixi run python standalone_sim.py` to launch IsaacSim loading an empty scene (only ground plane)
 - `pixi run python standalone_sim.py --scene ./stretch_isaac/example_stage/hm3d_example.usd` to load the provided example scene
+- `pixi run python standalone_sim.py --scene ... --occupancy-map map.npz` additionally writes the scene's ground-truth occupancy grid (free = floor without obstacle, unknown = no floor), which stretch_mpc's `static_map_publisher` serves as `/map`
 - `pixi run python standalone_sim.py --help` to check available options
+
+## ROS interface (Nav2)
+
+The robot's action graphs mirror the real robot under Nav2 (REP 105), with every stamp on simulation time:
+
+| Interface | Notes |
+|---|---|
+| `/clock` | simulation time; run every ROS node with `use_sim_time:=true` |
+| tf `map -> odom` | identity, on `/tf` every step, standing in for the SLAM stack |
+| tf `odom -> base_link`, `/odom` | ground-truth pose; the twist is `base_link`'s body-frame velocity, like wheel odometry |
+| `/scan_filtered` | RTX lidar in frame `laser` |
+| `/femtobolt/color/image_raw`, `/femtobolt/color/camera_info`, `/femtobolt/depth/image_raw` | head camera; depth is `32FC1` in metres (perceive_semantix needs `camera_depth_scale_to_m:=1.0`) |
+| `/joint_states`, `/joint_command` | head pan and tilt |
+| `/stretch/cmd_vel` | drives the base |
+| `/home_the_robot`, `/stow_the_robot`, `/navigation_control/move_camera_oscillate`, `/is_homed` | stand-ins that succeed immediately; launch Nav2 with `camera_oscillator:=false` |
+
+`update_ros_graphs.py` applies this interface to a robot USD in place (`pixi run python update_ros_graphs.py robot_usd/<asset>.usd`); it is how `stretch3_no_arm_collider.usd` was made and can bring `stretch3.usd` up to date.
+
+Isaac Sim's ROS bridge ships only Fast DDS and Cyclone DDS, not zenoh. To keep the traffic on this machine, give every process (Isaac Sim and all ROS nodes talking to it) `RMW_IMPLEMENTATION=rmw_fastrtps_cpp FASTRTPS_DEFAULT_PROFILES_FILE=<this repo>/config/fastdds_localhost.xml` and a common `ROS_DOMAIN_ID`. Do not set `ROS_AUTOMATIC_DISCOVERY_RANGE`: rmw_fastrtps then opens sockets on every network interface again.
+
+## Behaviour tests
+
+`behaviour_test.py` runs the robot stack against Isaac Sim and checks its behaviour. It starts every component in its own pixi workspace of the mono-repo (Isaac Sim here, Nav2 from `../stretch_mpc`, `main_coordinator` from `../offline_bringup_active_mapmaintenance`, optionally `../perceive_semantix`) on a private, localhost-only ROS graph with a random domain.
+
+```bash
+pixi run -e test behaviour-test list                         # scenarios
+pixi run -e test behaviour-test run navigate_across_house    # one scenario, headless
+pixi run -e test behaviour-test run all --gui                # all of them, with the Isaac Sim window
+pixi run -e test behaviour-test run spin_in_place --keep-running   # leave the stack up afterwards
+pixi run -e test behaviour-test stack --coordinator          # only bring the stack up, for debugging
+```
+
+Each scenario gets a fresh stack and writes `test_runs/<time>_<scenario>/`: the log of every process, the ground-truth trajectory (`trajectory.csv`), the verdict and metrics (`result.json`) and `attach.sh`, which runs a command on that run's ROS graph (e.g. `./attach.sh ros2 topic list`). Without perceive_semantix, `/map` is the scene's ground-truth occupancy grid. Scenarios that need perceive_semantix run it without `OPENAI_API_KEY`, so they send nothing to OpenAI.
 
 > API Documentation of [IsaacSim](https://docs.isaacsim.omniverse.nvidia.com/5.1.0/py/source/extensions/isaacsim.core.api/docs/index.html)
 
@@ -58,6 +92,9 @@ If your scene does not already include the robot:
 - `Robot_Import_Files/` - modified URDF with updated collision meshes
 - `README.md` - this file
 - `standalone_sim.py` - python script for [scripted simulation ](#simulation-script)
+- `update_ros_graphs.py` - applies the [Nav2 ROS interface](#ros-interface-nav2) to a robot USD
+- `behaviour_test.py` - [behaviour tests](#behaviour-tests) of the robot stack; results go to `test_runs/` (not tracked)
+- `config/fastdds_localhost.xml` - Fast DDS profile that keeps ROS traffic on this machine
 
 ## ros2-bridge
 
