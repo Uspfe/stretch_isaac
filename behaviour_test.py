@@ -312,6 +312,7 @@ class Stack:
             perception = ["ros2", "run", "perceive_semantix_ros2", "perceive_semantix_node", "--ros-args"]
             perception += ["-p", "use_sim_time:=true", "-p", "rerun_mode:=disabled"]
             perception += ["-p", "camera_depth_scale_to_m:=1.0"]  # Isaac Sim publishes depth in metres (32FC1)
+            perception += ["-p", f"output_path:={self.run_directory / 'perceive_semantix_output'}"]
             # Without a key the OpenAI-based priors stay off, so a test run sends nothing to OpenAI.
             self._start("perceive_semantix", PERCEIVE_SEMANTIX, "zenoh", perception, variables={"OPENAI_API_KEY": None})
         else:
