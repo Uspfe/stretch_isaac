@@ -45,6 +45,9 @@ ros-jazzy-std-msgs = "*"
 ros-jazzy-std-srvs = "*"
 ros-jazzy-tf2-ros-py = "*"
 ros-jazzy-ros2cli-common-extensions = "*"
+shapely = "*"
+pyyaml = "*"
+ros-jazzy-laser-filters = "*"
 
 [feature.test.tasks]
 behaviour-test = "python -u behaviour_test.py"

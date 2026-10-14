@@ -47,6 +47,7 @@ If your scene does not already include the robot:
 - `pixi run python standalone_sim.py` to launch IsaacSim loading an empty scene (only ground plane)
 - `pixi run python standalone_sim.py --scene ./stretch_isaac/example_stage/hm3d_example.usd` to load the provided example scene
 - `pixi run python standalone_sim.py --scene ... --occupancy-map map.npz` additionally writes the scene's ground-truth occupancy grid (free = floor without obstacle, unknown = no floor), which stretch_mpc's `static_map_publisher` serves as `/map`
+- `pixi run python standalone_sim.py --obstacles boxes.json` adds static 1 m high boxes (`[{"center": [x, y], "size": [x, y]}, ...]`), which is how the Nav2 obstacle courses are built
 - `pixi run python standalone_sim.py --help` to check available options
 
 ## ROS interface (Nav2)
@@ -58,11 +59,13 @@ The robot's action graphs mirror the real robot under Nav2 (REP 105), with every
 | `/clock` | simulation time; run every ROS node with `use_sim_time:=true` |
 | tf `map -> odom` | identity, on `/tf` every step, standing in for the SLAM stack |
 | tf `odom -> base_link`, `/odom` | ground-truth pose; the twist is `base_link`'s body-frame velocity, like wheel odometry |
-| `/scan_filtered` | RTX lidar in frame `laser` |
+| `/scan` | RTX lidar in frame `laser`, raw like the real rplidar driver: it also sees the robot's own mast. As on the robot, stretch_core's `laser_filters` chain (`config/laser_filter_params.yaml`) turns it into `/scan_filtered`; the behaviour tests run it |
 | `/femtobolt/color/image_raw`, `/femtobolt/color/camera_info`, `/femtobolt/depth/image_raw` | head camera; depth is `32FC1` in metres (perceive_semantix needs `camera_depth_scale_to_m:=1.0`) |
 | `/joint_states`, `/joint_command` | head pan and tilt |
 | `/stretch/cmd_vel` | drives the base |
 | `/home_the_robot`, `/stow_the_robot`, `/navigation_control/move_camera_oscillate`, `/is_homed` | stand-ins that succeed immediately; launch Nav2 with `camera_oscillator:=false` |
+
+In `stretch3_no_arm_collider.usd` the arm, wrist and gripper have no colliders. The base shell has none either (only wheels, caster, mast, lift and a few small parts collide), so the behaviour tests check collisions of the base's outline geometrically.
 
 `update_ros_graphs.py` applies this interface to a robot USD in place (`pixi run python update_ros_graphs.py robot_usd/<asset>.usd`); it is how `stretch3_no_arm_collider.usd` was made and can bring `stretch3.usd` up to date.
 
@@ -70,17 +73,28 @@ Isaac Sim's ROS bridge ships only Fast DDS and Cyclone DDS, not zenoh. To keep t
 
 ## Behaviour tests
 
-`behaviour_test.py` runs the robot stack against Isaac Sim and checks its behaviour. It starts every component in its own pixi workspace of the mono-repo (Isaac Sim here, Nav2 from `../stretch_mpc`, `main_coordinator` from `../offline_bringup_active_mapmaintenance`, optionally `../perceive_semantix`) on a private, localhost-only ROS graph with a random domain.
+`behaviour_test.py` tests Nav2 (`../stretch_mpc`) on the Stretch: Nav2 alone, without `main_coordinator` or perceive_semantix. Every component runs in its own pixi workspace of the mono-repo, on a private, localhost-only ROS graph with a random domain. `/map` is assumed correct (`test_worlds.py`): exact on the obstacle courses (boxes aligned to the map's cells), the scene's ground-truth occupancy grid in the house. Except on the map-error courses, where it is deliberately wrong. Collisions are judged against the world (the boxes) on the courses and against the map in the house, with the base's outline as Nav2 knows it (its footprint without padding), because the simulated base shell has no collider.
+
+| Scenarios | What they test | Simulator |
+|---|---|---|
+| `planner_*` | `ComputePathToPose` on each course and every leg of the house routes. Where the robot fits through, a path must exist, and the footprint swept along it (turns included) must not touch an obstacle. Where it does not fit (`planner_blocked`), there must be no path | no: tf holds the robot at the start; seconds per scenario |
+| `controller_*` | `FollowPath` along a fixed reference path through each course: reach the end without contact and without getting stuck | Isaac Sim |
+| `navigation_*` | `NavigateToPose` end to end, through the courses and along waypoint routes in the house; `navigation_spin` tests the Spin behavior | Isaac Sim |
+| `simulation_odometry` | `/odom`'s twist matches its poses, which the controllers rely on | Isaac Sim |
+
+The courses each target one failure case: a 0.6 m doorway, a 0.6 m wide corridor, a slalom through 0.6 m gaps, a 0.3 m gap with a 0.6 m detour, a 0.6 m dead end the robot starts in, the 90° turn of a 0.7 m corridor (where the back swings out), and a wall whose only gap is 0.3 m (planner only). Three more courses test map errors, where the robot must not halt but get away: cells wrongly occupied under and beside the robot (`phantom_under`), a map wall overlapping the robot along a corridor (`phantom_side`), and a correct map with the robot 3 cm from a wall, inside the planner's margin (`margin`). One short route through a scanned home (`example_stage/hm3d_example.usd`) is the realism check. Each goal must be at least 0.35 m from obstacles on the map, so the robot can turn on it; the runner checks this, not just Nav2.
 
 ```bash
-pixi run -e test behaviour-test list                         # scenarios
-pixi run -e test behaviour-test run navigate_across_house    # one scenario, headless
-pixi run -e test behaviour-test run all --gui                # all of them, with the Isaac Sim window
-pixi run -e test behaviour-test run spin_in_place --keep-running   # leave the stack up afterwards
-pixi run -e test behaviour-test stack --coordinator          # only bring the stack up, for debugging
+pixi run -e test behaviour-test list
+pixi run -e test behaviour-test run 'planner_*'                      # fast, no simulator
+pixi run -e test behaviour-test run controller_slalom --gui          # with the Isaac Sim window
+pixi run -e test behaviour-test run 'controller_*' --params-file variant.yaml   # e.g. another controller
+pixi run -e test behaviour-test run all                            # 3 scenarios at a time; --jobs N
+pixi run -e test behaviour-test run navigation_spin --keep-running   # leave the stack up afterwards
+pixi run -e test behaviour-test stack --course slalom                # only bring the stack up, for debugging
 ```
 
-Each scenario gets a fresh stack and writes `test_runs/<time>_<scenario>/`: the log of every process, the ground-truth trajectory (`trajectory.csv`), the verdict and metrics (`result.json`) and `attach.sh`, which runs a command on that run's ROS graph (e.g. `./attach.sh ros2 topic list`). Without perceive_semantix, `/map` is the scene's ground-truth occupancy grid. Scenarios that need perceive_semantix run it without `OPENAI_API_KEY`, so they send nothing to OpenAI.
+Each scenario gets a fresh stack and writes `test_runs/<time>_<scenario>/`: the log of every process, the map, the trajectory (`trajectory.csv`) or the planned paths (`planned_paths.json`), the verdict and metrics (`result.json`: minimum clearance and where, longest stall, path deviation, durations, planning times) and `attach.sh`, which runs a command on that run's ROS graph (e.g. `./attach.sh ros2 topic list`). The house map is computed once with Isaac Sim and cached in `test_runs/cache/`; delete it when the scene changes.
 
 > API Documentation of [IsaacSim](https://docs.isaacsim.omniverse.nvidia.com/5.1.0/py/source/extensions/isaacsim.core.api/docs/index.html)
 
@@ -93,7 +107,7 @@ Each scenario gets a fresh stack and writes `test_runs/<time>_<scenario>/`: the 
 - `README.md` - this file
 - `standalone_sim.py` - python script for [scripted simulation ](#simulation-script)
 - `update_ros_graphs.py` - applies the [Nav2 ROS interface](#ros-interface-nav2) to a robot USD
-- `behaviour_test.py` - [behaviour tests](#behaviour-tests) of the robot stack; results go to `test_runs/` (not tracked)
+- `behaviour_test.py`, `test_worlds.py` - [behaviour tests](#behaviour-tests) of Nav2 and their courses and routes; results go to `test_runs/` (not tracked)
 - `config/fastdds_localhost.xml` - Fast DDS profile that keeps ROS traffic on this machine
 
 ## ros2-bridge

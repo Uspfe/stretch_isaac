@@ -11,6 +11,8 @@ from matplotlib import pyplot as plt
 
 from utils.multi_dijkstra import MultiDijkstra
 
+OBSTACLE_HEIGHT = 1.0
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run standalone simulation with optional scene selection.")
@@ -95,6 +97,13 @@ def parse_args() -> argparse.Namespace:
         default=None,
     )
     parser.add_argument(
+        "--obstacles",
+        type=Path,
+        help="JSON list of static boxes to spawn, each {\"center\": [x, y], \"size\": [x, y]} in metres, standing "
+        f"{OBSTACLE_HEIGHT} m high on the floor.",
+        default=None,
+    )
+    parser.add_argument(
         "--disable-scene-collider",
         action="store_true",
         help="Disable the scene collider.",
@@ -127,6 +136,7 @@ import carb  # pyright: ignore[reportMissingImports] # noqa: E402
 import omni  # pyright: ignore[reportMissingImports] # noqa: E402
 import omni.kit.actions.core  # pyright: ignore[reportMissingImports] # noqa: E402
 from isaacsim.core.api import World  # pyright: ignore[reportMissingImports] # noqa: E402
+from isaacsim.core.api.objects import FixedCuboid  # pyright: ignore[reportMissingImports] # noqa: E402
 from isaacsim.core.utils import extensions  # pyright: ignore[reportMissingImports] # noqa: E402
 from omni.isaac.core.articulations import Articulation  # pyright: ignore[reportMissingImports] # noqa: E402
 from omni.isaac.core.utils.stage import add_reference_to_stage  # pyright: ignore[reportMissingImports] # noqa: E402
@@ -455,6 +465,20 @@ def disable_collision(root_prim: Usd.Prim):
             attr.Set(False)
 
 
+def spawn_obstacles(world: World, path: Path, root_prim: str) -> None:
+    for index, obstacle in enumerate(json.loads(path.read_text())):
+        (x, y), (size_x, size_y) = obstacle["center"], obstacle["size"]
+        world.scene.add(
+            FixedCuboid(
+                prim_path=f"{root_prim}/obstacles/box_{index}",
+                name=f"obstacle_{index}",
+                position=np.array([x, y, OBSTACLE_HEIGHT / 2]),
+                scale=np.array([size_x, size_y, OBSTACLE_HEIGHT]),
+                color=np.array([0.6, 0.6, 0.6]),
+            )
+        )
+
+
 def main(simulation_app, args: argparse.Namespace):
     args.asset = parse_assets(args.asset)
     args.scene = args.scene.resolve().absolute() if args.scene is not None else None
@@ -572,6 +596,14 @@ def main(simulation_app, args: argparse.Namespace):
         )
         prim_asset = add_reference_to_stage(usd_path=str(asset_usd_path), prim_path=f"{root_prim}/{name}_{id}")
         set_prim_pose(prim_asset, (x, y, z), theta)
+    if args.obstacles is not None:
+        spawn_obstacles(world, args.obstacles, root_prim)
+
+    # also before the reset, so that physics never sees the robot at the origin, where an obstacle may stand
+    start_x, start_y, start_z, start_yaw = args.robot_start
+    stretch_xform = UsdGeom.XformCommonAPI(world.stage.GetPrimAtPath(str(prim_stretch.GetPath()) + "/stretch"))
+    stretch_xform.SetTranslate(Gf.Vec3d(start_x, start_y, start_z))
+    stretch_xform.SetRotate(Gf.Vec3f(0.0, 0.0, start_yaw))
     world.reset()
 
     stretch = Articulation(prim_path=str(prim_stretch.GetPath()) + "/stretch")

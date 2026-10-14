@@ -1,19 +1,27 @@
-"""Automated behaviour tests of the robot stack in Isaac Sim.
+"""Automated tests of Nav2 (stretch_mpc) on the Stretch, against Isaac Sim or a fixed robot pose.
 
 Every component runs in its own pixi workspace on a private ROS 2 graph: Fast DDS restricted to this machine
-(config/fastdds_localhost.xml) on a random domain, all on simulation time. Without --perceive, /map is the
-scene's ground-truth occupancy grid; with it, perceive_semantix builds /map from the simulated camera.
+(config/fastdds_localhost.xml) on a random domain. /map is assumed correct (test_worlds.py): exact on the obstacle
+courses, the scene's ground-truth occupancy grid in the house. Three kinds of scenarios:
+
+- planner_*: Nav2 without a simulator, the robot fixed at the start by tf. The planner's paths must exist where the
+  robot fits through, and the robot's footprint swept along them must not touch an obstacle.
+- controller_*: the controller follows a fixed reference path through a course in Isaac Sim, without touching an
+  obstacle and without getting stuck.
+- navigation_*: NavigateToPose end to end in Isaac Sim, through the courses and along waypoint routes in the house.
 
     pixi run -e test behaviour-test list
-    pixi run -e test behaviour-test run navigate_across_house [--gui] [--keep-running]
+    pixi run -e test behaviour-test run 'planner_*'
+    pixi run -e test behaviour-test run controller_slalom [--gui] [--keep-running] [--params-file variant.yaml]
     pixi run -e test behaviour-test run all
-    pixi run -e test behaviour-test stack --coordinator [--perceive] [--gui]
+    pixi run -e test behaviour-test stack [--course slalom] [--no-simulation] [--gui]
 
-Each run writes the logs of every process, the ground-truth trajectory and result.json to test_runs/<run>/.
+Each run writes the logs of every process, the trajectory and result.json to test_runs/<run>/.
 """
 
 import argparse
 import csv
+import fnmatch
 import json
 import math
 import os
@@ -23,16 +31,19 @@ import subprocess
 import sys
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Callable, Optional, TextIO
 
+import shapely
+
 import rclpy
 from action_msgs.msg import GoalStatus, GoalStatusArray
 from geometry_msgs.msg import PoseStamped, Twist
-from nav2_msgs.action import NavigateToPose, Spin
-from nav_msgs.msg import OccupancyGrid, Odometry
+from nav2_msgs.action import ComputePathToPose, FollowPath, NavigateToPose, Spin
+from nav_msgs.msg import OccupancyGrid, Odometry, Path as PathMessage
 from rclpy.action import ActionClient
 from rclpy.client import Client
 from rclpy.executors import MultiThreadedExecutor
@@ -40,23 +51,46 @@ from rclpy.node import Node
 from rclpy.parameter import Parameter
 from rclpy.publisher import Publisher
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy, qos_profile_action_status_default
+from rclpy.task import Future
 from rosgraph_msgs.msg import Clock
-from std_msgs.msg import String
 from std_srvs.srv import Trigger
 
-STRETCH_ISAAC = Path(__file__).resolve().parent
+from test_worlds import (
+    CLEARANCE_TOLERANCE,
+    COURSES,
+    GOAL_CLEARANCE,
+    HOUSE_SCENE,
+    HOUSE_START,
+    ROUTES,
+    STRETCH_ISAAC,
+    Course,
+    OccupancyMap,
+    Point,
+    Pose,
+    minimum_clearance,
+    swept_poses,
+)
+
 MONOREPO = STRETCH_ISAAC.parent
 STRETCH_MPC = MONOREPO / "stretch_mpc"
-OFFLINE_BRINGUP = MONOREPO / "offline_bringup_active_mapmaintenance"
-PERCEIVE_SEMANTIX = MONOREPO / "perceive_semantix"
+STRETCH_CORE = MONOREPO / "online_bringup_active_mapmaintenance" / "stretch_ros2" / "stretch_ros2" / "stretch_core"
+LASER_FILTER_PARAMETERS = STRETCH_CORE / "config" / "laser_filter_params.yaml"
 FAST_DDS_PROFILE = STRETCH_ISAAC / "config" / "fastdds_localhost.xml"
 TEST_RUNS = STRETCH_ISAAC / "test_runs"
-
-DEFAULT_SCENE = STRETCH_ISAAC / "example_stage" / "hm3d_example.usd"
-DEFAULT_START = (-7.26, 1.61, 0.0)  # x, y, yaw in the map frame: the open room on the west side of the HM3D scene
+HOUSE_MAP_CACHE = TEST_RUNS / "cache" / f"{HOUSE_SCENE.stem}_map.npz"
 
 PASSED_THROUGH_VARIABLES = ("XAUTHORITY", "XDG_RUNTIME_DIR", "WAYLAND_DISPLAY")
+RUNNER_ACTIVATION_PREFIXES = ("PIXI_", "CONDA_", "ROS_", "AMENT_", "RMW_", "COLCON_", "FASTRTPS_", "PYTHONPATH")
 SYSTEM_PATH = "/usr/local/bin:/usr/bin:/bin"
+# Under the load of Isaac Sim starting, rmw_fastrtps sometimes drops the response to a lifecycle transition, because
+# it waits only 100 ms to discover the client's response reader; Nav2's lifecycle manager then waits forever.
+LOST_LIFECYCLE_RESPONSE = "change_state (timeout): client will not receive response"
+# Under the same load, a server may also take longer to configure than the lifecycle manager waits.
+ABORTED_BRINGUP = "Aborting bringup"
+# Isaac Sim 5.1 occasionally crashes in carb.tasking within its first second, before loading anything.
+ISAAC_SIM_STARTUP_CRASH = "Crash detected"
+GOAL_TIMEOUT = 240.0  # simulated seconds for one navigation goal or one path to follow
+STALL_DISTANCE = 0.1  # the robot counts as stalled while it stays within this distance
 
 
 def ros_environment(domain_id: int) -> dict[str, str]:
@@ -65,6 +99,14 @@ def ros_environment(domain_id: int) -> dict[str, str]:
         "ROS_DOMAIN_ID": str(domain_id),
         "FASTRTPS_DEFAULT_PROFILES_FILE": str(FAST_DDS_PROFILE),
     }
+
+
+def pose_stamped(x: float, y: float, yaw: float = 0.0) -> PoseStamped:
+    pose = PoseStamped()
+    pose.header.frame_id = "map"
+    pose.pose.position.x, pose.pose.position.y = x, y
+    pose.pose.orientation.z, pose.pose.orientation.w = math.sin(yaw / 2), math.cos(yaw / 2)
+    return pose
 
 
 class ManagedProcess:
@@ -83,7 +125,6 @@ class ManagedProcess:
         command: list[str],
         run_directory: Path,
         variables: dict[str, Optional[str]],
-        keep_stdin_open: bool = False,
     ) -> None:
         """`variables` are set after the workspace's activation; a value of None unsets the variable."""
         self.name = name
@@ -101,12 +142,17 @@ class ManagedProcess:
         ]  # fmt: skip
         self._log.write(f"$ {' '.join(full_command)}\n")
         self._log.flush()
+        # without the runner's own pixi and ROS activation, which would leak into (and partly suppress) the workspace's
+        environment_of_pixi = {
+            key: value for key, value in os.environ.items() if not key.startswith(RUNNER_ACTIVATION_PREFIXES)
+        }
         self._process = subprocess.Popen(
             full_command,
             cwd=workspace,
+            env=environment_of_pixi,
             stdout=self._log,
             stderr=subprocess.STDOUT,
-            stdin=subprocess.PIPE if keep_stdin_open else subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL,
             start_new_session=True,
         )
 
@@ -128,28 +174,29 @@ class ManagedProcess:
 
 
 class Monitor(Node):
-    """Observes the stack on simulation time and drives it like a user would."""
+    """Observes the stack and drives it through Nav2's actions; its clock is simulation time when simulating."""
 
     trajectory: list[tuple[float, float, float, float]]
     odometry_velocities: list[tuple[float, float, float, float]]
     navigation_results: dict[bytes, int]
-    thoughts: list[str]
     costmap_received: bool
+    _simulated: bool
     _clock_seconds: float
     _lock: threading.Lock
-    _user_query_publisher: Publisher
     _velocity_publisher: Publisher
     navigate_client: ActionClient
+    follow_client: ActionClient
+    plan_client: ActionClient
     spin_client: ActionClient
     _navigation_lifecycle_client: Client
 
-    def __init__(self) -> None:
-        super().__init__("behaviour_test_monitor", parameter_overrides=[Parameter("use_sim_time", value=True)])
+    def __init__(self, simulated: bool) -> None:
+        super().__init__("behaviour_test_monitor", parameter_overrides=[Parameter("use_sim_time", value=simulated)])
         self.trajectory = []
         self.odometry_velocities = []
         self.navigation_results = {}
-        self.thoughts = []
         self.costmap_received = False
+        self._simulated = simulated
         self._clock_seconds = 0.0
         self._lock = threading.Lock()
         latched = QoSProfile(
@@ -164,10 +211,10 @@ class Monitor(Node):
             self._on_navigation_status,
             qos_profile_action_status_default,
         )
-        self.create_subscription(String, "main_coordinator/thought_process", self._on_thought, 10)
-        self._user_query_publisher = self.create_publisher(String, "main_coordinator/user_query", 10)
         self._velocity_publisher = self.create_publisher(Twist, "/stretch/cmd_vel", 10)
         self.navigate_client = ActionClient(self, NavigateToPose, "/navigate_to_pose")
+        self.follow_client = ActionClient(self, FollowPath, "/follow_path")
+        self.plan_client = ActionClient(self, ComputePathToPose, "/compute_path_to_pose")
         self.spin_client = ActionClient(self, Spin, "/spin")
         self._navigation_lifecycle_client = self.create_client(Trigger, "/lifecycle_manager_navigation/is_active")
 
@@ -191,10 +238,6 @@ class Monitor(Node):
             for status in message.status_list:
                 self.navigation_results[bytes(status.goal_info.goal_id.uuid)] = status.status
 
-    def _on_thought(self, message: String) -> None:
-        with self._lock:
-            self.thoughts.append(message.data)
-
     def navigation_is_active(self) -> bool:
         """Whether Nav2's lifecycle manager has activated all servers; their actions reject goals before that."""
         if not self._navigation_lifecycle_client.service_is_ready():
@@ -206,11 +249,17 @@ class Monitor(Node):
         return future.done() and future.result().success
 
     def simulation_time(self) -> float:
-        return self._clock_seconds
+        """Simulation time when simulating, wall-clock time otherwise."""
+        return self._clock_seconds if self._simulated else time.time()
 
-    def pose(self) -> Optional[tuple[float, float, float]]:
+    def pose(self) -> Optional[Pose]:
         with self._lock:
             return self.trajectory[-1][1:] if self.trajectory else None
+
+    def poses(self) -> list[tuple[float, float, float, float]]:
+        """Every pose (stamp, x, y, yaw) of /odom so far."""
+        with self._lock:
+            return list(self.trajectory)
 
     def recent_odometry(
         self, count: int
@@ -220,9 +269,17 @@ class Monitor(Node):
             return self.trajectory[-count:], self.odometry_velocities[-count:]
 
     def distance_travelled(self) -> float:
-        with self._lock:
-            points = [(x, y) for _, x, y, _ in self.trajectory]
+        points = [(x, y) for _, x, y, _ in self.poses()]
         return sum(math.dist(a, b) for a, b in zip(points, points[1:]))
+
+    def longest_stall(self) -> float:
+        """The longest time the robot stayed within STALL_DISTANCE of one place while a goal was running."""
+        longest, anchor = 0.0, None
+        for stamp, x, y, _ in self.poses():
+            if anchor is None or math.dist(anchor[1:], (x, y)) > STALL_DISTANCE:
+                anchor = (stamp, x, y)
+            longest = max(longest, stamp - anchor[0])
+        return longest
 
     def navigation_count(self, status: int) -> int:
         with self._lock:
@@ -234,52 +291,72 @@ class Monitor(Node):
         command.linear.x, command.angular.z = linear, angular
         self._velocity_publisher.publish(command)
 
-    def send_user_query(self, query: str, timeout: float = 30.0) -> None:
-        """Publishes once main_coordinator subscribes; the topic keeps no history for a late subscriber."""
-        deadline = time.time() + timeout
-        while self._user_query_publisher.get_subscription_count() == 0:
-            if time.time() > deadline:
-                raise TimeoutError("main_coordinator does not subscribe to its user query topic")
-            time.sleep(0.1)
-        self._user_query_publisher.publish(String(data=query))
+
+def ensure_house_map(domain_id: int) -> None:
+    """Computes the house scene's ground-truth occupancy grid with Isaac Sim once, into HOUSE_MAP_CACHE."""
+    if HOUSE_MAP_CACHE.exists():
+        return
+    print("  computing the house's occupancy grid with Isaac Sim (once)")
+    HOUSE_MAP_CACHE.parent.mkdir(parents=True, exist_ok=True)
+    command = ["python", "standalone_sim.py", "--headless", "--scene", str(HOUSE_SCENE)]
+    command += ["--occupancy-map", str(HOUSE_MAP_CACHE)]
+    simulation = ManagedProcess(
+        "house_map", STRETCH_ISAAC, "default", command, HOUSE_MAP_CACHE.parent, ros_environment(domain_id)
+    )
+    deadline = time.time() + 900
+    while not simulation.log_contains("Saved occupancy grid"):
+        if not simulation.is_running() or time.time() > deadline:
+            simulation.stop()
+            raise RuntimeError(f"computing the house's occupancy grid failed; see {simulation.log_path}")
+        time.sleep(1.0)
+    simulation.stop()
 
 
 @dataclass
 class Stack:
-    """The processes of one test run and the monitor observing them."""
+    """The processes of one test run, and the monitor observing them.
+
+    The world is a course or, without one, the house scene. Without simulation, static tf holds the robot at its start.
+    """
 
     run_directory: Path
     domain_id: int
     headless: bool
-    coordinator: bool
-    perceive: bool
-    scene: Path
-    start: tuple[float, float, float]
+    simulate: bool
+    course: Optional[Course]
+    params_file: Optional[Path]
+    metrics: dict[str, object] = field(default_factory=dict)
     processes: list[ManagedProcess] = field(default_factory=list)
     monitor: Optional[Monitor] = None
     _executor: Optional[MultiThreadedExecutor] = None
+    _spin_thread: Optional[threading.Thread] = None
 
-    def _start(
-        self,
-        name: str,
-        workspace: Path,
-        environment: str,
-        command: list[str],
-        keep_stdin_open: bool = False,
-        variables: Optional[dict[str, Optional[str]]] = None,
-    ) -> ManagedProcess:
+    @property
+    def start(self) -> Pose:
+        return self.course.start if self.course else HOUSE_START
+
+    @property
+    def map_file(self) -> Path:
+        return self.run_directory / "map.npz"
+
+    def occupancy_map(self) -> OccupancyMap:
+        return OccupancyMap.load(self.map_file)
+
+    def obstacles(self) -> shapely.Geometry:
+        return self.course.obstacles() if self.course else self.occupancy_map().obstacles()
+
+    def _start(self, name: str, workspace: Path, environment: str, command: list[str]) -> ManagedProcess:
         print(f"  starting {name}")
-        process = ManagedProcess(
-            name,
-            workspace,
-            environment,
-            command,
-            self.run_directory,
-            {**ros_environment(self.domain_id), **(variables or {})},
-            keep_stdin_open,
-        )
+        variables = ros_environment(self.domain_id)
+        process = ManagedProcess(name, workspace, environment, command, self.run_directory, variables)
         self.processes.append(process)
         return process
+
+    def _start_navigation(self, name: str) -> ManagedProcess:
+        navigation = ["ros2", "launch", "stretch_mpc_ros", "planner.launch.py", f"use_sim_time:={self.simulate}"]
+        navigation += ["camera_oscillator:=false"]
+        navigation += [f"params_file:={self.params_file.resolve()}"] if self.params_file else []
+        return self._start(name, STRETCH_MPC, "dev", navigation)
 
     def wait_until(self, condition: Callable[[], bool], timeout: float, description: str) -> None:
         """Waits wall-clock time for a startup condition, failing early if a process died."""
@@ -297,56 +374,83 @@ class Stack:
             if not process.is_running():
                 raise RuntimeError(f"{process.name} exited; see {process.log_path}")
 
+    def _write_map(self) -> None:
+        if self.course:
+            self.course.occupancy_map().save(self.map_file)
+            return
+        ensure_house_map(self.domain_id)
+        self.map_file.write_bytes(HOUSE_MAP_CACHE.read_bytes())
+
+    def _start_simulation(self) -> None:
+        x, y, yaw = self.start
+        command = ["python", "standalone_sim.py", "--robot-start", str(x), str(y), "0", str(math.degrees(yaw))]
+        if self.course:
+            obstacles_file = self.run_directory / "obstacles.json"
+            self.course.write_obstacles(obstacles_file)
+            command += ["--obstacles", str(obstacles_file)]
+        else:
+            command += ["--scene", str(HOUSE_SCENE)]
+        command += ["--headless"] if self.headless else []
+        simulation = self._start("simulation", STRETCH_ISAAC, "default", command)
+        try:
+            self.wait_until(lambda: simulation.log_contains("<robot>"), 900, "Isaac Sim to start simulating")
+        except RuntimeError:
+            if not simulation.log_contains(ISAAC_SIM_STARTUP_CRASH):
+                raise
+            print("  Isaac Sim crashed while starting; restarting it once")
+            self.processes.remove(simulation)
+            simulation = self._start("simulation_restarted", STRETCH_ISAAC, "default", command)
+            self.wait_until(lambda: simulation.log_contains("<robot>"), 900, "Isaac Sim to start after its restart")
+        # /scan -> /scan_filtered as on the real robot (stretch_core's rplidar.launch.py), removing the robot's own mast
+        laser_filter = ["ros2", "run", "laser_filters", "scan_to_scan_filter_chain", "--ros-args"]
+        laser_filter += ["-r", "__node:=laser_filter", "--params-file", str(LASER_FILTER_PARAMETERS)]
+        laser_filter += ["-p", "use_sim_time:=true"]
+        self._start("laser_filter", STRETCH_ISAAC, "test", laser_filter)
+
+    def _start_fixed_robot(self) -> None:
+        x, y, yaw = self.start
+        transform = ["ros2", "run", "tf2_ros", "static_transform_publisher"]
+        self._start("map_to_odom", STRETCH_MPC, "dev", [*transform, "--frame-id", "map", "--child-frame-id", "odom"])
+        odom_to_base_link = ["--x", str(x), "--y", str(y), "--yaw", str(yaw), "--frame-id", "odom"]
+        odom_to_base_link += ["--child-frame-id", "base_link"]
+        self._start("odom_to_base_link", STRETCH_MPC, "dev", [*transform, *odom_to_base_link])
+
     def up(self) -> Monitor:
         self.run_directory.mkdir(parents=True, exist_ok=True)
-        map_file = self.run_directory / "map.npz"
-        x, y, yaw = self.start
-        simulation_command = ["python", "standalone_sim.py", "--scene", str(self.scene)]
-        simulation_command += ["--robot-start", str(x), str(y), "0", str(math.degrees(yaw))]
-        simulation_command += [] if self.perceive else ["--occupancy-map", str(map_file)]
-        simulation_command += ["--headless"] if self.headless else []
-        simulation = self._start("simulation", STRETCH_ISAAC, "default", simulation_command)
-        self.wait_until(lambda: simulation.log_contains("<robot>"), 900, "Isaac Sim to start simulating")
-
-        if self.perceive:
-            perception = ["ros2", "run", "perceive_semantix_ros2", "perceive_semantix_node", "--ros-args"]
-            perception += ["-p", "use_sim_time:=true", "-p", "rerun_mode:=disabled"]
-            perception += ["-p", "camera_depth_scale_to_m:=1.0"]  # Isaac Sim publishes depth in metres (32FC1)
-            perception += ["-p", f"output_path:={self.run_directory / 'perceive_semantix_output'}"]
-            # Without a key the OpenAI-based priors stay off, so a test run sends nothing to OpenAI.
-            self._start("perceive_semantix", PERCEIVE_SEMANTIX, "zenoh", perception, variables={"OPENAI_API_KEY": None})
-        else:
-            map_publisher = ["ros2", "run", "stretch_mpc_ros", "static_map_publisher", "--ros-args"]
-            self._start(
-                "map", STRETCH_MPC, "dev", [*map_publisher, "-p", f"map_file:={map_file}", "-p", "use_sim_time:=true"]
-            )
-        navigation = ["ros2", "launch", "stretch_mpc_ros", "planner.launch.py", "use_sim_time:=true"]
-        self._start("navigation", STRETCH_MPC, "dev", [*navigation, "camera_oscillator:=false"])
+        self._write_map()
+        self._start_simulation() if self.simulate else self._start_fixed_robot()
+        map_publisher = ["ros2", "run", "stretch_mpc_ros", "static_map_publisher", "--ros-args"]
+        map_publisher += ["-p", f"map_file:={self.map_file}", "-p", f"use_sim_time:={str(self.simulate).lower()}"]
+        self._start("map", STRETCH_MPC, "dev", map_publisher)
+        navigation = self._start_navigation("navigation")
 
         os.environ.update(ros_environment(self.domain_id))
-        os.environ.pop(
-            "ROS_AUTOMATIC_DISCOVERY_RANGE", None
-        )  # makes rmw_fastrtps open sockets on every interface again
+        os.environ.pop("ROS_AUTOMATIC_DISCOVERY_RANGE", None)  # makes rmw_fastrtps open sockets on every interface
         rclpy.init()
-        self.monitor = Monitor()
+        self.monitor = Monitor(self.simulate)
         self._executor = MultiThreadedExecutor()
         self._executor.add_node(self.monitor)
-        threading.Thread(target=self._executor.spin, daemon=True).start()
+        self._spin_thread = threading.Thread(target=self._executor.spin, daemon=True)
+        self._spin_thread.start()
         monitor = self.monitor
-        self.wait_until(lambda: monitor.navigation_is_active(), 300, "Nav2 to activate")
-        self.wait_until(lambda: monitor.costmap_received, 300, "the global costmap")
+        try:
 
-        if self.coordinator:
-            coordinator = ["ros2", "run", "offline_bringup_active_mapmaintenance", "main_coordinator", "--ros-args"]
-            coordinator_process = self._start(
-                "coordinator", OFFLINE_BRINGUP, "dev", [*coordinator, "-p", "use_sim_time:=true"], keep_stdin_open=True
-            )
-            # its log rather than thought_process, which keeps no history and may announce this before we match it
-            self.wait_until(
-                lambda: coordinator_process.log_contains("Ready to receive tasks"),
-                300,
-                "main_coordinator to initialise",
-            )
+            def activated_or_aborted() -> bool:
+                return navigation.log_contains(ABORTED_BRINGUP) or monitor.navigation_is_active()
+
+            self.wait_until(activated_or_aborted, 300, "Nav2 to activate")
+            failed_bringup = navigation.log_contains(ABORTED_BRINGUP)
+        except TimeoutError:
+            if not navigation.log_contains(LOST_LIFECYCLE_RESPONSE):
+                raise
+            failed_bringup = True
+        if failed_bringup:
+            print("  Nav2's lifecycle manager failed to bring it up; restarting Nav2 once")
+            navigation.stop()
+            self.processes.remove(navigation)
+            self._start_navigation("navigation_restarted")
+            self.wait_until(lambda: monitor.navigation_is_active(), 300, "Nav2 to activate after its restart")
+        self.wait_until(lambda: monitor.costmap_received, 300, "the global costmap")
         return monitor
 
     def write_attach_script(self) -> Path:
@@ -363,6 +467,7 @@ class Stack:
     def down(self) -> None:
         if self._executor is not None:
             self._executor.shutdown()
+            self._spin_thread.join(timeout=10.0)  # destroying the node under a running callback raises at exit
         if self.monitor is not None:
             self.monitor.destroy_node()
         if rclpy.ok():
@@ -376,10 +481,8 @@ class Scenario:
     name: str
     description: str
     run: Callable[[Stack, Monitor], list[str]]  # returns the failures; none means passed
-    coordinator: bool = False
-    perceive: bool = False
-    start: tuple[float, float, float] = DEFAULT_START
-    scene: Path = DEFAULT_SCENE
+    simulate: bool = True
+    course: Optional[str] = None  # a key of COURSES; without one, the house scene
 
 
 def wait_simulated(stack: Stack, monitor: Monitor, seconds: float, until: Callable[[], bool] = lambda: False) -> bool:
@@ -396,40 +499,151 @@ def wait_simulated(stack: Stack, monitor: Monitor, seconds: float, until: Callab
     return until()
 
 
-def run_action(stack: Stack, monitor: Monitor, client: ActionClient, goal: object, timeout: float) -> Optional[int]:
-    """Sends an action goal and returns its final status, or None if it did not finish within `timeout` sim seconds."""
-    goal_future = client.send_goal_async(goal)
+def run_action(
+    stack: Stack, monitor: Monitor, client: ActionClient, goal: object, timeout: float
+) -> tuple[Optional[int], Optional[object]]:
+    """Sends an action goal; returns its final status and result, or (None, None) if it did not finish in time."""
+    goal_future: Future = client.send_goal_async(goal)
     if not wait_simulated(stack, monitor, 10.0, goal_future.done) or not goal_future.result().accepted:
-        return GoalStatus.STATUS_ABORTED
-    result_future = goal_future.result().get_result_async()
+        return GoalStatus.STATUS_ABORTED, None
+    result_future: Future = goal_future.result().get_result_async()
     if not wait_simulated(stack, monitor, timeout, result_future.done):
         goal_future.result().cancel_goal_async()
-        return None
-    return result_future.result().status
+        return None, None
+    return result_future.result().status, result_future.result().result
 
 
-def navigate_across_house(stack: Stack, monitor: Monitor) -> list[str]:
-    goal_x, goal_y = -1.5, 3.0
+def check_trajectory(stack: Stack, monitor: Monitor) -> list[str]:
+    """The robot's footprint must never have touched an obstacle; records clearance and stalls as metrics."""
+    clearance, closest = minimum_clearance([pose[1:] for pose in monitor.poses()], stack.obstacles())
+    stack.metrics["minimum_clearance"] = clearance
+    stack.metrics["closest_pose"] = closest
+    stack.metrics["longest_stall"] = monitor.longest_stall()
+    return [f"the footprint touched an obstacle at (x, y, yaw) {closest}"] if clearance <= 0.0 else []
+
+
+def navigate_to(stack: Stack, monitor: Monitor, position: Point, yaw: float = 0.0) -> list[str]:
+    """NavigateToPose must succeed within GOAL_TIMEOUT and end near `position`."""
     goal = NavigateToPose.Goal()
-    goal.pose = PoseStamped()
-    goal.pose.header.frame_id = "map"
-    goal.pose.pose.position.x, goal.pose.pose.position.y = goal_x, goal_y
-    goal.pose.pose.orientation.w = 1.0
-    status = run_action(stack, monitor, monitor.navigate_client, goal, timeout=240.0)
+    goal.pose = pose_stamped(*position, yaw)
+    start = monitor.simulation_time()
+    status, _ = run_action(stack, monitor, monitor.navigate_client, goal, GOAL_TIMEOUT)
+    stack.metrics.setdefault("navigation_durations", []).append(monitor.simulation_time() - start)
     failures = []
     if status != GoalStatus.STATUS_SUCCEEDED:
-        failures.append(f"NavigateToPose ended with status {status} instead of SUCCEEDED (4)")
+        failures.append(f"NavigateToPose to {position} ended with status {status} instead of SUCCEEDED (4)")
     pose = monitor.pose()
-    if pose is None or math.dist(pose[:2], (goal_x, goal_y)) > 0.35:
-        failures.append(f"robot ended at {pose}, more than 0.35 m from the goal ({goal_x}, {goal_y})")
+    if pose is None or math.dist(pose[:2], position) > 0.35:
+        failures.append(f"robot ended at {pose}, more than 0.35 m from the goal {position}")
     return failures
+
+
+def check_goals_feasible(occupancy_map: OccupancyMap, goals: list[Point]) -> None:
+    """A test is only meaningful if the robot can stand and turn at every goal; this checks the test, not Nav2."""
+    for goal in goals:
+        if occupancy_map.clearance(goal) < GOAL_CLEARANCE - CLEARANCE_TOLERANCE:
+            raise ValueError(f"goal {goal} is closer than {GOAL_CLEARANCE} m to an obstacle on the map")
+
+
+def check_path(
+    stack: Stack, start: Pose, goal: Point, feasible: bool, goal_yaw: float = 0.0
+) -> tuple[list[str], Pose]:
+    """ComputePathToPose from `start` to `goal`. If the robot fits through, a path must exist and the footprint swept
+    along it must not touch an obstacle; otherwise there must be no path. Returns the failures and the pose the robot
+    would end in."""
+    monitor = stack.monitor
+    goal_message = ComputePathToPose.Goal()
+    goal_message.goal, goal_message.start = pose_stamped(*goal, goal_yaw), pose_stamped(*start)
+    goal_message.use_start = True
+    goal_message.planner_id = "GridBased"  # the main planner; the behaviour tree's fallback is tested end to end
+    status, result = run_action(stack, monitor, monitor.plan_client, goal_message, 30.0)
+    label = f"path from {start[:2]} to {goal}"
+    poses = result.path.poses if result else []
+    points = [(pose.pose.position.x, pose.pose.position.y) for pose in poses]
+    yaws = [2.0 * math.atan2(pose.pose.orientation.z, pose.pose.orientation.w) for pose in poses]
+    # Planners that model the robot's heading (Smac) orient every pose; others (NavFn) leave them all at zero.
+    headings = yaws if any(abs(yaw) > 1e-6 for yaw in yaws[:-1]) else None
+    arrival = (*goal, goal_yaw)
+    if status != GoalStatus.STATUS_SUCCEEDED or not points:
+        return ([] if not feasible else [f"no {label} (status {status})"]), arrival
+    if not feasible:
+        return [f"a {label} exists, though none fits"], arrival
+    paths_file = stack.run_directory / "planned_paths.json"
+    paths = json.loads(paths_file.read_text()) if paths_file.exists() else []
+    paths_file.write_text(json.dumps([*paths, {"start": start, "goal": goal, "path": points, "yaws": yaws}]))
+    clearance, closest = minimum_clearance(swept_poses(points, start[2], goal_yaw, headings), stack.obstacles())
+    stack.metrics.setdefault("path_clearances", []).append(clearance)
+    planning_time = result.planning_time.sec + result.planning_time.nanosec * 1e-9
+    stack.metrics.setdefault("planning_times", []).append(planning_time)
+    stack.metrics.setdefault("path_lengths", []).append(sum(math.dist(a, b) for a, b in zip(points, points[1:])))
+    failures = [f"the footprint swept along the {label} touches an obstacle at {closest}"] if clearance <= 0.0 else []
+    return failures, arrival
+
+
+def plan_course(stack: Stack, monitor: Monitor) -> list[str]:
+    course = stack.course
+    check_goals_feasible(stack.occupancy_map(), [course.goal])
+    return check_path(stack, course.start, course.goal, course.feasible, course.goal_yaw)[0]
+
+
+def plan_routes(stack: Stack, monitor: Monitor) -> list[str]:
+    failures = []
+    for route in ROUTES.values():
+        check_goals_feasible(stack.occupancy_map(), route.waypoints)
+        start = route.start
+        for _, goal in route.legs():
+            leg_failures, start = check_path(stack, start, goal, feasible=True)
+            failures += leg_failures
+    return failures
+
+
+def follow_reference_path(stack: Stack, monitor: Monitor) -> list[str]:
+    """The controller follows the course's reference path to its goal without touching an obstacle."""
+    course = stack.course
+    reference_poses = course.reference_poses()
+    goal = FollowPath.Goal()
+    goal.controller_id = "FollowPath"
+    goal.path = PathMessage()
+    goal.path.header.frame_id = "map"
+    goal.path.poses = [pose_stamped(*pose) for pose in reference_poses]
+    start = monitor.simulation_time()
+    status, _ = run_action(stack, monitor, monitor.follow_client, goal, GOAL_TIMEOUT)
+    stack.metrics["follow_duration"] = monitor.simulation_time() - start
+    reference = shapely.LineString([pose[:2] for pose in reference_poses])
+    stack.metrics["maximum_path_deviation"] = max(
+        (reference.distance(shapely.Point(x, y)) for _, x, y, _ in monitor.poses()), default=None
+    )
+    failures = [] if status == GoalStatus.STATUS_SUCCEEDED else [f"FollowPath ended with status {status}"]
+    pose = monitor.pose()
+    if pose is None or math.dist(pose[:2], course.goal) > 0.35:
+        failures.append(f"robot ended at {pose}, more than 0.35 m from the end of the path {course.goal}")
+    return failures + check_trajectory(stack, monitor)
+
+
+def navigate_course(stack: Stack, monitor: Monitor) -> list[str]:
+    course = stack.course
+    return navigate_to(stack, monitor, course.goal, course.goal_yaw) + check_trajectory(stack, monitor)
+
+
+def drive_route(name: str) -> Callable[[Stack, Monitor], list[str]]:
+    """NavigateToPose to every waypoint of the route in turn and back to the start, each within GOAL_TIMEOUT."""
+    route = ROUTES[name]
+
+    def run(stack: Stack, monitor: Monitor) -> list[str]:
+        check_goals_feasible(stack.occupancy_map(), route.waypoints)
+        failures = []
+        for _, goal in route.legs():
+            failures += navigate_to(stack, monitor, goal)
+        return failures + check_trajectory(stack, monitor)
+
+    return run
 
 
 def spin_in_place(stack: Stack, monitor: Monitor) -> list[str]:
     start = monitor.pose()
     goal = Spin.Goal()
     goal.target_yaw = math.pi / 2
-    status = run_action(stack, monitor, monitor.spin_client, goal, timeout=60.0)
+    status, _ = run_action(stack, monitor, monitor.spin_client, goal, timeout=60.0)
     end = monitor.pose()
     failures = []
     if status != GoalStatus.STATUS_SUCCEEDED:
@@ -482,66 +696,81 @@ def odometry_consistency(stack: Stack, monitor: Monitor) -> list[str]:
     return failures
 
 
-def coordinator_task(query: str, minimum_waypoints: int, timeout: float) -> Callable[[Stack, Monitor], list[str]]:
-    """The coordinator task `query` must reach `minimum_waypoints` navigation goals and abort no more than it reaches."""
-
-    def run(stack: Stack, monitor: Monitor) -> list[str]:
-        monitor.send_user_query(query)
-        wait_simulated(
-            stack, monitor, timeout, lambda: monitor.navigation_count(GoalStatus.STATUS_SUCCEEDED) >= minimum_waypoints
-        )
-        succeeded = monitor.navigation_count(GoalStatus.STATUS_SUCCEEDED)
-        aborted = monitor.navigation_count(GoalStatus.STATUS_ABORTED)
-        failures = []
-        if succeeded < minimum_waypoints:
-            failures.append(f"reached {succeeded} of {minimum_waypoints} waypoints within {timeout:.0f} s")
-        if aborted > succeeded:
-            failures.append(f"{aborted} navigation goals aborted, more than the {succeeded} reached")
-        return failures
-
-    return run
-
-
+COURSE_DESCRIPTIONS = {
+    "doorway": "through a 0.6 m doorway offset from the start and the goal",
+    "corridor": "through a 0.6 m wide, 2 m long corridor",
+    "slalom": "through three walls with alternating 0.6 m gaps, 2 m apart",
+    "narrow_gap_detour": "past a 0.3 m gap straight ahead, through a 0.6 m gap to the side",
+    "dead_end": "out of a 0.6 m wide dead end it starts in, facing the closed end",
+    "corner": "round the 90 degree turn of a 0.7 m wide corridor",
+    "phantom_under": "away from map cells wrongly occupied under and beside the robot, turning through them",
+    "phantom_side": "along a corridor whose wall the map has 0.25 m too far in, overlapping the robot",
+    "margin": "on from 3 cm beside the wall of a 0.6 m corridor, inside the planner's margin",
+    "margin_open": "on from 3 cm beside a single wall in the open, inside the planner's margin",
+    "unmapped_obstacle": "round a box on the way that the map does not know",
+    "blocked": "to a goal behind a wall whose only gap (0.3 m) is narrower than the robot",
+}
 SCENARIOS = {
     scenario.name: scenario
     for scenario in [
-        Scenario(
-            "navigate_across_house", "Nav2 drives from the west room to the centre of the house.", navigate_across_house
+        *(
+            Scenario(
+                f"planner_{name}",
+                f"Planner, {COURSE_DESCRIPTIONS[name]}: "
+                + ("a path the footprint fits along." if course.feasible else "no path."),
+                plan_course,
+                simulate=False,
+                course=name,
+            )
+            for name, course in COURSES.items()
+            if not course.unmapped
         ),
-        Scenario("spin_in_place", "Nav2's Spin behavior turns the robot by 90 deg on the spot.", spin_in_place),
         Scenario(
-            "odometry_consistency",
+            "planner_house",
+            "Planner, every leg of the house routes: paths the footprint fits along.",
+            plan_routes,
+            simulate=False,
+        ),
+        *(
+            Scenario(
+                f"controller_{name}",
+                f"Controller follows a reference path {COURSE_DESCRIPTIONS[name]}.",
+                follow_reference_path,
+                course=name,
+            )
+            for name, course in COURSES.items()
+            if course.feasible and not course.unmapped
+        ),
+        *(
+            Scenario(
+                f"navigation_{name}", f"NavigateToPose {COURSE_DESCRIPTIONS[name]}.", navigate_course, course=name
+            )
+            for name, course in COURSES.items()
+            if course.feasible
+        ),
+        *(
+            Scenario(
+                f"navigation_{name}", f"NavigateToPose along the {name} waypoint route.", drive_route(name)
+            )
+            for name in ROUTES
+        ),
+        Scenario("navigation_spin", "Nav2's Spin behavior turns the robot by 90 deg on the spot.", spin_in_place),
+        Scenario(
+            "simulation_odometry",
             "/odom's twist is the body-frame velocity its poses imply, for straight, turning and curved driving.",
             odometry_consistency,
-        ),
-        Scenario(
-            "coordinator_patrol",
-            "main_coordinator patrols the ground-truth map: three waypoints reached.",
-            coordinator_task("patrol", minimum_waypoints=3, timeout=600.0),
-            coordinator=True,
-        ),
-        Scenario(
-            "coordinator_random_walk",
-            "main_coordinator random walk on the ground-truth map: three waypoints reached.",
-            coordinator_task("random", minimum_waypoints=3, timeout=600.0),
-            coordinator=True,
-        ),
-        Scenario(
-            "coordinator_explore",
-            "main_coordinator explores frontiers of perceive_semantix's map: three waypoints reached.",
-            coordinator_task("explore", minimum_waypoints=3, timeout=900.0),
-            coordinator=True,
-            perceive=True,
         ),
     ]
 }
 
 
-def write_results(run_directory: Path, scenario: Scenario, failures: list[str], monitor: Optional[Monitor]) -> None:
-    if monitor is not None:
+def write_results(
+    run_directory: Path, scenario: Scenario, failures: list[str], monitor: Optional[Monitor], metrics: dict[str, object]
+) -> None:
+    if monitor is not None and monitor.trajectory:
         with (run_directory / "trajectory.csv").open("w", newline="") as file:
             writer = csv.writer(file)
-            writer.writerow(["simulation_time", "x", "y", "yaw"])
+            writer.writerow(["time", "x", "y", "yaw"])
             writer.writerows(monitor.trajectory)
     result = {
         "scenario": scenario.name,
@@ -549,19 +778,22 @@ def write_results(run_directory: Path, scenario: Scenario, failures: list[str], 
         "failures": failures,
         "distance_travelled": monitor.distance_travelled() if monitor else None,
         "final_pose": monitor.pose() if monitor else None,
-        "navigation_succeeded": monitor.navigation_count(GoalStatus.STATUS_SUCCEEDED) if monitor else None,
-        "navigation_aborted": monitor.navigation_count(GoalStatus.STATUS_ABORTED) if monitor else None,
-        "thoughts": monitor.thoughts if monitor else [],
+        **metrics,
     }
     (run_directory / "result.json").write_text(json.dumps(result, indent=2))
 
 
-def new_stack(
-    arguments: argparse.Namespace, name: str, coordinator: bool, perceive: bool, scene: Path, start: tuple
-) -> Stack:
+def new_stack(arguments: argparse.Namespace, name: str, simulate: bool, course: Optional[str]) -> Stack:
     domain_id = arguments.domain_id if arguments.domain_id is not None else random.randint(100, 200)
     run_directory = TEST_RUNS / f"{datetime.now():%Y%m%d_%H%M%S}_{name}"
-    return Stack(run_directory, domain_id, not arguments.gui, coordinator, perceive, scene, start)
+    return Stack(
+        run_directory,
+        domain_id,
+        not arguments.gui,
+        simulate,
+        COURSES[course] if course else None,
+        arguments.params_file,
+    )
 
 
 def wait_for_interrupt(stack: Stack) -> None:
@@ -575,24 +807,50 @@ def wait_for_interrupt(stack: Stack) -> None:
 
 
 def run_scenario(scenario: Scenario, arguments: argparse.Namespace) -> bool:
-    stack = new_stack(arguments, scenario.name, scenario.coordinator, scenario.perceive, scenario.scene, scenario.start)
-    print(
-        f"[{scenario.name}] {scenario.description}\n  run directory {stack.run_directory}, ROS domain {stack.domain_id}"
-    )
+    stack = new_stack(arguments, scenario.name, scenario.simulate, scenario.course)
+    print(f"[{scenario.name}] {scenario.description}")
+    print(f"  run directory {stack.run_directory}, ROS domain {stack.domain_id}")
     monitor = None
     try:
         monitor = stack.up()
         failures = scenario.run(stack, monitor)
     except (RuntimeError, TimeoutError) as error:
         failures = [f"stack failure: {error}"]
+    except ValueError as error:
+        failures = [f"invalid test: {error}"]
     except KeyboardInterrupt:
         failures = ["interrupted"]
-    write_results(stack.run_directory, scenario, failures, monitor)
-    print(f"  {'PASSED' if not failures else 'FAILED'}" + "".join(f"\n    - {failure}" for failure in failures))
-    if arguments.keep_running and monitor is not None:
-        wait_for_interrupt(stack)
-    stack.down()
+    try:
+        write_results(stack.run_directory, scenario, failures, monitor, stack.metrics)
+        print(f"  {'PASSED' if not failures else 'FAILED'}" + "".join(f"\n    - {failure}" for failure in failures))
+        if arguments.keep_running and monitor is not None:
+            wait_for_interrupt(stack)
+    finally:
+        stack.down()
     return not failures
+
+
+def run_in_parallel(names: list[str], arguments: argparse.Namespace) -> dict[str, bool]:
+    """Runs each scenario in its own process and ROS domain, `arguments.jobs` at a time."""
+    domain_ids = random.sample(range(100, 200), len(names))
+    if any(SCENARIOS[name].course is None for name in names):
+        ensure_house_map(domain_ids[0])
+    batch_directory = TEST_RUNS / f"{datetime.now():%Y%m%d_%H%M%S}_batch"
+    batch_directory.mkdir(parents=True)
+    options = ["--gui"] if arguments.gui else []
+    options += ["--params-file", str(arguments.params_file.resolve())] if arguments.params_file else []
+    print(f"running {len(names)} scenarios, {arguments.jobs} at a time; their output goes to {batch_directory}")
+
+    def run(index: int, name: str) -> tuple[str, bool]:
+        time.sleep(10.0 * index if index < arguments.jobs else 0.0)  # stagger the first Isaac Sim startups
+        command = [sys.executable, "-u", __file__, "run", name, "--jobs", "1", "--domain-id", str(domain_ids[index])]
+        with (batch_directory / f"{name}.log").open("w") as log:
+            passed = subprocess.run([*command, *options], stdout=log, stderr=subprocess.STDOUT).returncode == 0
+        print(f"{'PASSED' if passed else 'FAILED'}  {name}", flush=True)
+        return name, passed
+
+    with ThreadPoolExecutor(arguments.jobs) as pool:
+        return dict(pool.map(run, range(len(names)), names))
 
 
 def main() -> int:
@@ -600,39 +858,31 @@ def main() -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("list", help="List the scenarios.")
     run_parser = commands.add_parser("run", help="Run scenarios, each on a fresh stack.")
-    run_parser.add_argument("scenarios", nargs="+", help="Scenario names, or 'all'.")
+    run_parser.add_argument("scenarios", nargs="+", help="Scenario names or patterns ('planner_*'), or 'all'.")
     run_parser.add_argument("--keep-running", action="store_true", help="Keep each stack up after its scenario.")
+    run_parser.add_argument("--jobs", type=int, default=3, help="Scenarios run at the same time (default 3).")
     stack_parser = commands.add_parser("stack", help="Only bring the stack up, for manual debugging.")
-    stack_parser.add_argument("--coordinator", action="store_true", help="Also start main_coordinator.")
+    stack_parser.add_argument("--course", choices=COURSES, help="An obstacle course instead of the house.")
     stack_parser.add_argument(
-        "--perceive", action="store_true", help="perceive_semantix instead of the ground-truth map."
+        "--no-simulation", action="store_true", help="Hold the robot at its start by tf instead of simulating it."
     )
-    stack_parser.add_argument("--scene", type=Path, default=DEFAULT_SCENE)
-    stack_parser.add_argument("--start", type=float, nargs=3, default=DEFAULT_START, metavar=("X", "Y", "YAW"))
     for subparser in (run_parser, stack_parser):
         subparser.add_argument(
             "--gui", action="store_true", help="Show the Isaac Sim window instead of running headless."
         )
         subparser.add_argument("--domain-id", type=int, default=None, help="ROS domain (default: random 100-200).")
+        subparser.add_argument(
+            "--params-file", type=Path, default=None, help="Nav2 parameters instead of stretch_mpc's nav2_params.yaml."
+        )
     arguments = parser.parse_args()
 
     if arguments.command == "list":
         for scenario in SCENARIOS.values():
-            requirements = ", ".join(
-                n for n, needed in (("coordinator", scenario.coordinator), ("perceive", scenario.perceive)) if needed
-            )
-            print(f"{scenario.name:28} {scenario.description}" + (f" [{requirements}]" if requirements else ""))
+            print(f"{scenario.name:32} {scenario.description}")
         return 0
 
     if arguments.command == "stack":
-        stack = new_stack(
-            arguments,
-            "stack",
-            arguments.coordinator,
-            arguments.perceive,
-            arguments.scene.resolve(),
-            tuple(arguments.start),
-        )
+        stack = new_stack(arguments, "stack", not arguments.no_simulation, arguments.course)
         print(f"run directory {stack.run_directory}, ROS domain {stack.domain_id}")
         try:
             stack.up()
@@ -643,12 +893,17 @@ def main() -> int:
             stack.down()
         return 0
 
-    names = list(SCENARIOS) if arguments.scenarios == ["all"] else arguments.scenarios
-    unknown = [name for name in names if name not in SCENARIOS]
+    patterns = ["*" if pattern == "all" else pattern for pattern in arguments.scenarios]
+    unknown = [pattern for pattern in patterns if not fnmatch.filter(SCENARIOS, pattern)]
     if unknown:
-        parser.error(f"unknown scenarios {unknown}; see 'list'")
-    results = {name: run_scenario(SCENARIOS[name], arguments) for name in names}
-    print("\n".join(f"{'PASSED' if passed else 'FAILED'}  {name}" for name, passed in results.items()))
+        parser.error(f"no scenarios match {unknown}; see 'list'")
+    names = [name for name in SCENARIOS if any(fnmatch.fnmatch(name, pattern) for pattern in patterns)]
+    if arguments.jobs > 1 and len(names) > 1 and not arguments.keep_running:
+        results = run_in_parallel(names, arguments)  # reports each scenario as it finishes
+    else:
+        results = {name: run_scenario(SCENARIOS[name], arguments) for name in names}
+        print("\n".join(f"{'PASSED' if passed else 'FAILED'}  {name}" for name, passed in results.items()))
+    print(f"{sum(results.values())} of {len(results)} scenarios passed")
     return 0 if all(results.values()) else 1
 
 

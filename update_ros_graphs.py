@@ -8,6 +8,8 @@ Usage: pixi run python update_ros_graphs.py robot_usd/stretch3_no_arm_collider.u
   and map -> odom is the identity, published on /tf with every simulation step like the SLAM stack it stands in
   for (perceive_semantix only accepts camera frames with a map -> * sample at their stamp).
 - The camera publishes under /femtobolt/*, the layout of the real robot's SLAM stacks.
+- The lidar publishes the raw /scan, like the real robot's rplidar driver: it also sees the robot's own mast, which
+  stretch_core's laser filter chain removes on the way to /scan_filtered.
 - /home_the_robot, /stow_the_robot and /navigation_control/move_camera_oscillate are answered with success by a
   single graph (they were served twice before, once without success).
 - The MPC-era BasePose graph (/state_estimator/pose_filtered) is removed; /odom and tf carry the pose.
@@ -221,7 +223,12 @@ def update_camera_graph(stage: Usd.Stage) -> None:
 def update_lidar_and_joint_state_graphs() -> None:
     og.Controller.edit(
         graph_path("ROS_Lidar"),
-        {keys.SET_VALUES: [(f"{graph_path('ROS_Lidar')}/ros2_rtx_lidar_helper.inputs:useSystemTime", False)]},
+        {
+            keys.SET_VALUES: [
+                (f"{graph_path('ROS_Lidar')}/ros2_rtx_lidar_helper.inputs:useSystemTime", False),
+                (f"{graph_path('ROS_Lidar')}/ros2_rtx_lidar_helper.inputs:topicName", "/scan"),
+            ]
+        },
     )
     stamp_with_simulation_time("ROS_JointStates", ["PublisherJointState"])
 
