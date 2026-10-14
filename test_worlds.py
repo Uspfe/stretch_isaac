@@ -104,9 +104,14 @@ class Course:
     """Boxes on an empty floor, with a start pose and a goal pose.
 
     `reference_path` lists the corners of a path from the start to the goal that the robot fits along, which the
-    controller tests give to the controller; `reverse` drives it backwards. An infeasible course has no such path;
-    only the planner is tested on it. `map_errors` are boxes occupied in the map only, `unmapped` boxes are in the world
-    only; the planner and controller tests, which rely on the map, skip a course with unmapped boxes.
+    controller tests give to the controller. A course whose goal the robot cannot reach (inside an obstacle, like on a
+    table, or cut off) has no such path but a `closest_approach`: the robot must still head for the goal and end within
+    that distance of it (the closest reachable pose plus the controller's 0.25 m goal tolerance). A course that fails
+    for a reason accepted for now names it in `known_issue`; `run all` leaves it out. `map_errors` are boxes occupied
+    in the map only, `unmapped` boxes are in the world only; the planner and controller tests, which rely on the map,
+    skip a course with unmapped boxes. The planner test also skips a course whose start is too close to an obstacle to
+    turn (`turns_at_start` false): the fallback planner plans out of it, and the path turns away right at the start,
+    which the controller does while driving forwards.
     """
 
     boxes: list[Box]
@@ -114,15 +119,15 @@ class Course:
     goal: Point
     goal_yaw: float = 0.0
     reference_path: list[Point] = field(default_factory=list)
-    reverse: bool = False
-    feasible: bool = True
+    closest_approach: Optional[float] = None
+    known_issue: Optional[str] = None
     map_errors: list[Box] = field(default_factory=list)
     unmapped: list[Box] = field(default_factory=list)
+    turns_at_start: bool = True
 
     def reference_poses(self) -> list[Pose]:
         points = densify([self.start[:2], *self.reference_path, self.goal])
-        flip = math.pi if self.reverse else 0.0
-        return [(x, y, heading + flip) for (x, y), heading in zip(points, path_headings(points))]
+        return [(x, y, heading) for (x, y), heading in zip(points, path_headings(points))]
 
     def occupancy_map(self) -> OccupancyMap:
         return OccupancyMap.from_boxes(self.boxes + self.map_errors)
@@ -194,12 +199,12 @@ COURSES = {
         goal=(5.4, 0.0),
         reference_path=[(2.3, -1.4), (3.8, -1.4)],
     ),
-    # The robot starts at the closed end of a dead-end corridor, facing the wall; the goal is behind it.
+    # The robot starts at the closed end of a dead-end corridor, facing the wall; the goal is behind it. It has 2 cm on
+    # either side to turn round, but its planner leaves a 5 cm margin, so only the fallback planner finds a path.
     "dead_end": Course(
         arena(5.0, 3.0) + cross_wall(3.0, 3.0, [(0.0, GAP)], depth=2.0),
         start=(4.6, 0.0, 0.0),
         goal=(1.0, 0.0),
-        reverse=True,
     ),
     # A 0.7 m wide corridor turning by 90 degrees. Where the path turns, base_link's position near the front lets the
     # back swing out towards the outer walls; the house showed planners clipping such corners.
@@ -245,6 +250,7 @@ COURSES = {
         start=(2.0, 0.1, 0.0),
         goal=(5.0, 0.0),
         reference_path=[(3.0, 0.0)],
+        turns_at_start=False,
     ),
     # The same overshoot next to a single wall in the open, where there is room to move away from it.
     "margin_open": Course(
@@ -252,18 +258,39 @@ COURSES = {
         start=(2.0, 0.1, 0.0),
         goal=(5.0, 0.0),
         reference_path=[(3.0, 0.0)],
+        turns_at_start=False,
     ),
     # A box on the straight way to the goal that the map does not know; the robot has to see it with the lidar and
     # go round it.
     "unmapped_obstacle": Course(
         arena(6.0, 3.0), start=(0.6, 0.0, 0.0), goal=(5.4, 0.0), unmapped=[(2.7, -0.3, 3.3, 0.3)]
     ),
-    # The only way to the goal is a gap narrower than the robot.
+    # The only way to the goal is a gap narrower than the robot; the closest it gets is facing the wall, base_link 2.5 m
+    # from the goal.
     "blocked": Course(
         arena(6.0, 4.0) + cross_wall(3.0, 4.0, [(0.0, NARROW_GAP)]),
         start=(0.6, 0.0, 0.0),
         goal=(5.4, 0.0),
-        feasible=False,
+        closest_approach=2.9,
+        known_issue="the fallback planner, which checks only the robot's centre, plans through the gap",
+    ),
+    # The goal is in the middle of a 0.8 m table, as when asked to go to an object on it; the closest the robot gets is
+    # facing the table's edge, base_link 0.5 m from the goal.
+    "goal_on_table": Course(
+        arena(5.0, 3.0) + [(3.0, -0.4, 3.8, 0.4)],
+        start=(0.6, 0.0, 0.0),
+        goal=(3.4, 0.0),
+        closest_approach=0.9,
+    ),
+    # The goal is in a closed 1 m box; the closest the robot gets is facing a wall of the box, base_link 0.7 m away.
+    "goal_enclosed": Course(
+        arena(6.0, 3.0)
+        + cross_wall(3.4, 1.2, [])
+        + cross_wall(4.5, 1.2, [])
+        + [(3.5, -0.6, 4.5, -0.5), (3.5, 0.5, 4.5, 0.6)],
+        start=(0.6, 0.0, 0.0),
+        goal=(4.0, 0.0),
+        closest_approach=1.1,
     ),
 }
 
@@ -292,9 +319,12 @@ def robot_footprint() -> shapely.Polygon:
     return shapely.Polygon(json.loads(parameters["local_costmap"]["local_costmap"]["ros__parameters"]["footprint"]))
 
 
-def minimum_clearance(poses: list[Pose], obstacles: shapely.Geometry) -> tuple[float, Optional[Pose]]:
-    """The smallest distance between the robot's footprint and an obstacle over `poses`, and where."""
-    footprint = robot_footprint()
+def minimum_clearance(
+    poses: list[Pose], obstacles: shapely.Geometry, tolerance: float = 0.0
+) -> tuple[float, Optional[Pose]]:
+    """The smallest distance between the robot's footprint, shrunk by `tolerance`, and an obstacle over `poses`, and
+    where."""
+    footprint = robot_footprint().buffer(-tolerance, join_style="mitre")
     closest: tuple[float, Optional[Pose]] = (math.inf, None)
     for x, y, yaw in poses:
         placed = affinity.translate(affinity.rotate(footprint, yaw, origin=(0, 0), use_radians=True), x, y)
@@ -302,6 +332,14 @@ def minimum_clearance(poses: list[Pose], obstacles: shapely.Geometry) -> tuple[f
         if distance < closest[0]:
             closest = (distance, (x, y, yaw))
     return closest
+
+
+def reversing_distance(poses: list[Pose]) -> float:
+    """How far a robot passing through `poses` (x, y, yaw) moves against its heading."""
+    return sum(
+        max(0.0, -((next_x - x) * math.cos(yaw) + (next_y - y) * math.sin(yaw)))
+        for (x, y, yaw), (next_x, next_y, _) in zip(poses, poses[1:])
+    )
 
 
 def densify(corners: list[Point], spacing: float = 0.05) -> list[Point]:

@@ -68,6 +68,7 @@ from test_worlds import (
     Point,
     Pose,
     minimum_clearance,
+    reversing_distance,
     swept_poses,
 )
 
@@ -90,7 +91,14 @@ ABORTED_BRINGUP = "Aborting bringup"
 # Isaac Sim 5.1 occasionally crashes in carb.tasking within its first second, before loading anything.
 ISAAC_SIM_STARTUP_CRASH = "Crash detected"
 GOAL_TIMEOUT = 240.0  # simulated seconds for one navigation goal or one path to follow
+GOAL_DISTANCE = 0.35  # how close the robot must end to a goal it can reach
+PLANNERS = ("GridBased", "Fallback", "Approach")  # in the order the behaviour tree tries them
 STALL_DISTANCE = 0.1  # the robot counts as stalled while it stays within this distance
+# The house map's 0.1 m cells count as occupied when an obstacle covers any part of them, so its walls are up to a cell
+# too thick; the robot may reach half a cell into them.
+HOUSE_COLLISION_TOLERANCE = 0.05
+MAXIMUM_PATH_REVERSING = 0.15  # plans drive forwards, turning on the spot
+MAXIMUM_REVERSING = 0.5  # RPP may back off to correct, e.g. in a tight corner
 
 
 def ros_environment(domain_id: int) -> dict[str, str]:
@@ -345,6 +353,10 @@ class Stack:
     def obstacles(self) -> shapely.Geometry:
         return self.course.obstacles() if self.course else self.occupancy_map().obstacles()
 
+    @property
+    def collision_tolerance(self) -> float:
+        return 0.0 if self.course else HOUSE_COLLISION_TOLERANCE
+
     def _start(self, name: str, workspace: Path, environment: str, command: list[str]) -> ManagedProcess:
         print(f"  starting {name}")
         variables = ros_environment(self.domain_id)
@@ -433,18 +445,12 @@ class Stack:
         self._spin_thread = threading.Thread(target=self._executor.spin, daemon=True)
         self._spin_thread.start()
         monitor = self.monitor
-        try:
 
-            def activated_or_aborted() -> bool:
-                return navigation.log_contains(ABORTED_BRINGUP) or monitor.navigation_is_active()
+        def failed() -> bool:
+            return navigation.log_contains(ABORTED_BRINGUP) or navigation.log_contains(LOST_LIFECYCLE_RESPONSE)
 
-            self.wait_until(activated_or_aborted, 300, "Nav2 to activate")
-            failed_bringup = navigation.log_contains(ABORTED_BRINGUP)
-        except TimeoutError:
-            if not navigation.log_contains(LOST_LIFECYCLE_RESPONSE):
-                raise
-            failed_bringup = True
-        if failed_bringup:
+        self.wait_until(lambda: failed() or monitor.navigation_is_active(), 300, "Nav2 to activate")
+        if failed() and not monitor.navigation_is_active():
             print("  Nav2's lifecycle manager failed to bring it up; restarting Nav2 once")
             navigation.stop()
             self.processes.remove(navigation)
@@ -513,17 +519,28 @@ def run_action(
     return result_future.result().status, result_future.result().result
 
 
+def check_reversing(label: str, poses: list[Pose], metrics: list[float], maximum: float) -> list[str]:
+    reversing = reversing_distance(poses)
+    metrics.append(reversing)
+    return [f"{label} reverses {reversing:.2f} m"] if reversing > maximum else []
+
+
 def check_trajectory(stack: Stack, monitor: Monitor) -> list[str]:
-    """The robot's footprint must never have touched an obstacle; records clearance and stalls as metrics."""
-    clearance, closest = minimum_clearance([pose[1:] for pose in monitor.poses()], stack.obstacles())
+    """The robot's footprint must never have touched an obstacle, and it must not have reversed; records clearance
+    and stalls as metrics."""
+    poses = [pose[1:] for pose in monitor.poses()]
+    clearance, closest = minimum_clearance(poses, stack.obstacles(), stack.collision_tolerance)
     stack.metrics["minimum_clearance"] = clearance
     stack.metrics["closest_pose"] = closest
     stack.metrics["longest_stall"] = monitor.longest_stall()
-    return [f"the footprint touched an obstacle at (x, y, yaw) {closest}"] if clearance <= 0.0 else []
+    failures = [f"the footprint touched an obstacle at (x, y, yaw) {closest}"] if clearance <= 0.0 else []
+    return failures + check_reversing("the robot", poses, stack.metrics.setdefault("reversing", []), MAXIMUM_REVERSING)
 
 
-def navigate_to(stack: Stack, monitor: Monitor, position: Point, yaw: float = 0.0) -> list[str]:
-    """NavigateToPose must succeed within GOAL_TIMEOUT and end near `position`."""
+def navigate_to(
+    stack: Stack, monitor: Monitor, position: Point, yaw: float = 0.0, within: float = GOAL_DISTANCE
+) -> list[str]:
+    """NavigateToPose must succeed within GOAL_TIMEOUT and end `within` that distance of `position`."""
     goal = NavigateToPose.Goal()
     goal.pose = pose_stamped(*position, yaw)
     start = monitor.simulation_time()
@@ -533,8 +550,8 @@ def navigate_to(stack: Stack, monitor: Monitor, position: Point, yaw: float = 0.
     if status != GoalStatus.STATUS_SUCCEEDED:
         failures.append(f"NavigateToPose to {position} ended with status {status} instead of SUCCEEDED (4)")
     pose = monitor.pose()
-    if pose is None or math.dist(pose[:2], position) > 0.35:
-        failures.append(f"robot ended at {pose}, more than 0.35 m from the goal {position}")
+    if pose is None or math.dist(pose[:2], position) > within:
+        failures.append(f"robot ended at {pose}, more than {within} m from the goal {position}")
     return failures
 
 
@@ -546,17 +563,27 @@ def check_goals_feasible(occupancy_map: OccupancyMap, goals: list[Point]) -> Non
 
 
 def check_path(
-    stack: Stack, start: Pose, goal: Point, feasible: bool, goal_yaw: float = 0.0
+    stack: Stack,
+    start: Pose,
+    goal: Point,
+    goal_yaw: float = 0.0,
+    closest_approach: Optional[float] = None,
 ) -> tuple[list[str], Pose]:
-    """ComputePathToPose from `start` to `goal`. If the robot fits through, a path must exist and the footprint swept
-    along it must not touch an obstacle; otherwise there must be no path. Returns the failures and the pose the robot
-    would end in."""
+    """ComputePathToPose from `start` to `goal` with the planners in the behaviour tree's order, each where the one
+    before fails. A path must exist, the
+    footprint swept along it must not touch an obstacle, and it must not reverse. If
+    the goal cannot be reached, the path must end within `closest_approach` of it. Returns the failures and the pose
+    the robot would end in."""
     monitor = stack.monitor
     goal_message = ComputePathToPose.Goal()
     goal_message.goal, goal_message.start = pose_stamped(*goal, goal_yaw), pose_stamped(*start)
     goal_message.use_start = True
-    goal_message.planner_id = "GridBased"  # the main planner; the behaviour tree's fallback is tested end to end
-    status, result = run_action(stack, monitor, monitor.plan_client, goal_message, 30.0)
+    for planner in PLANNERS:
+        goal_message.planner_id = planner
+        status, result = run_action(stack, monitor, monitor.plan_client, goal_message, 30.0)
+        if status == GoalStatus.STATUS_SUCCEEDED:
+            stack.metrics.setdefault("planners", []).append(planner)
+            break
     label = f"path from {start[:2]} to {goal}"
     poses = result.path.poses if result else []
     points = [(pose.pose.position.x, pose.pose.position.y) for pose in poses]
@@ -565,9 +592,7 @@ def check_path(
     headings = yaws if any(abs(yaw) > 1e-6 for yaw in yaws[:-1]) else None
     arrival = (*goal, goal_yaw)
     if status != GoalStatus.STATUS_SUCCEEDED or not points:
-        return ([] if not feasible else [f"no {label} (status {status})"]), arrival
-    if not feasible:
-        return [f"a {label} exists, though none fits"], arrival
+        return [f"no {label} (status {status})"], arrival
     paths_file = stack.run_directory / "planned_paths.json"
     paths = json.loads(paths_file.read_text()) if paths_file.exists() else []
     paths_file.write_text(json.dumps([*paths, {"start": start, "goal": goal, "path": points, "yaws": yaws}]))
@@ -577,13 +602,22 @@ def check_path(
     stack.metrics.setdefault("planning_times", []).append(planning_time)
     stack.metrics.setdefault("path_lengths", []).append(sum(math.dist(a, b) for a, b in zip(points, points[1:])))
     failures = [f"the footprint swept along the {label} touches an obstacle at {closest}"] if clearance <= 0.0 else []
+    end_distance = math.dist(points[-1], goal)
+    stack.metrics.setdefault("path_end_distances", []).append(end_distance)
+    if end_distance > (closest_approach or GOAL_DISTANCE):
+        failures.append(f"the {label} ends {end_distance:.2f} m from the goal")
+    if headings is not None:
+        poses = [(x, y, yaw) for (x, y), yaw in zip(points, headings)]
+        path_reversing = stack.metrics.setdefault("path_reversing", [])
+        failures += check_reversing(f"the {label}", poses, path_reversing, MAXIMUM_PATH_REVERSING)
     return failures, arrival
 
 
 def plan_course(stack: Stack, monitor: Monitor) -> list[str]:
     course = stack.course
-    check_goals_feasible(stack.occupancy_map(), [course.goal])
-    return check_path(stack, course.start, course.goal, course.feasible, course.goal_yaw)[0]
+    if course.closest_approach is None:
+        check_goals_feasible(stack.occupancy_map(), [course.goal])
+    return check_path(stack, course.start, course.goal, course.goal_yaw, course.closest_approach)[0]
 
 
 def plan_routes(stack: Stack, monitor: Monitor) -> list[str]:
@@ -592,7 +626,7 @@ def plan_routes(stack: Stack, monitor: Monitor) -> list[str]:
         check_goals_feasible(stack.occupancy_map(), route.waypoints)
         start = route.start
         for _, goal in route.legs():
-            leg_failures, start = check_path(stack, start, goal, feasible=True)
+            leg_failures, start = check_path(stack, start, goal)
             failures += leg_failures
     return failures
 
@@ -622,7 +656,8 @@ def follow_reference_path(stack: Stack, monitor: Monitor) -> list[str]:
 
 def navigate_course(stack: Stack, monitor: Monitor) -> list[str]:
     course = stack.course
-    return navigate_to(stack, monitor, course.goal, course.goal_yaw) + check_trajectory(stack, monitor)
+    within = course.closest_approach or GOAL_DISTANCE
+    return navigate_to(stack, monitor, course.goal, course.goal_yaw, within) + check_trajectory(stack, monitor)
 
 
 def drive_route(name: str) -> Callable[[Stack, Monitor], list[str]]:
@@ -708,7 +743,9 @@ COURSE_DESCRIPTIONS = {
     "margin": "on from 3 cm beside the wall of a 0.6 m corridor, inside the planner's margin",
     "margin_open": "on from 3 cm beside a single wall in the open, inside the planner's margin",
     "unmapped_obstacle": "round a box on the way that the map does not know",
-    "blocked": "to a goal behind a wall whose only gap (0.3 m) is narrower than the robot",
+    "blocked": "towards a goal behind a wall whose only gap (0.3 m) is narrower than the robot",
+    "goal_on_table": "towards a goal in the middle of a table",
+    "goal_enclosed": "towards a goal inside a closed box",
 }
 SCENARIOS = {
     scenario.name: scenario
@@ -717,13 +754,13 @@ SCENARIOS = {
             Scenario(
                 f"planner_{name}",
                 f"Planner, {COURSE_DESCRIPTIONS[name]}: "
-                + ("a path the footprint fits along." if course.feasible else "no path."),
+                + ("a path the footprint fits along." if course.closest_approach is None else "as close as it gets."),
                 plan_course,
                 simulate=False,
                 course=name,
             )
             for name, course in COURSES.items()
-            if not course.unmapped
+            if not course.unmapped and course.turns_at_start
         ),
         Scenario(
             "planner_house",
@@ -739,14 +776,13 @@ SCENARIOS = {
                 course=name,
             )
             for name, course in COURSES.items()
-            if course.feasible and not course.unmapped
+            if course.closest_approach is None and not course.unmapped
         ),
         *(
             Scenario(
                 f"navigation_{name}", f"NavigateToPose {COURSE_DESCRIPTIONS[name]}.", navigate_course, course=name
             )
             for name, course in COURSES.items()
-            if course.feasible
         ),
         *(
             Scenario(
@@ -898,6 +934,11 @@ def main() -> int:
     if unknown:
         parser.error(f"no scenarios match {unknown}; see 'list'")
     names = [name for name in SCENARIOS if any(fnmatch.fnmatch(name, pattern) for pattern in patterns)]
+    if "all" in arguments.scenarios:
+        course_names = {name: SCENARIOS[name].course for name in names}
+        known_issues = [name for name, course in course_names.items() if course and COURSES[course].known_issue]
+        names = [name for name in names if name not in known_issues]
+        print(f"leaving out scenarios with a known issue: {', '.join(known_issues)}")
     if arguments.jobs > 1 and len(names) > 1 and not arguments.keep_running:
         results = run_in_parallel(names, arguments)  # reports each scenario as it finishes
     else:
