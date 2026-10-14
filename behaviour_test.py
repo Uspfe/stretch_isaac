@@ -91,7 +91,7 @@ ABORTED_BRINGUP = "Aborting bringup"
 # Isaac Sim 5.1 occasionally crashes in carb.tasking within its first second, before loading anything.
 ISAAC_SIM_STARTUP_CRASH = "Crash detected"
 GOAL_TIMEOUT = 240.0  # simulated seconds for one navigation goal or one path to follow
-GOAL_DISTANCE = 0.15  # how close the robot must end to a goal it can reach (the goal tolerance is 0.05 m)
+GOAL_DISTANCE = 0.25  # how close the robot must end to a goal it can reach (the goal tolerance is 0.15 m)
 PLANNERS = ("Circle", "GridBased", "Approach")  # in the order the behaviour tree tries them
 STALL_DISTANCE = 0.1  # the robot counts as stalled while it stays within this distance
 # The house map's 0.1 m cells count as occupied when an obstacle covers any part of them, so its walls are up to a cell
