@@ -92,7 +92,7 @@ ABORTED_BRINGUP = "Aborting bringup"
 ISAAC_SIM_STARTUP_CRASH = "Crash detected"
 GOAL_TIMEOUT = 240.0  # simulated seconds for one navigation goal or one path to follow
 GOAL_DISTANCE = 0.35  # how close the robot must end to a goal it can reach
-PLANNERS = ("GridBased", "Fallback", "Approach")  # in the order the behaviour tree tries them
+PLANNERS = ("Circle", "GridBased", "Approach")  # in the order the behaviour tree tries them
 STALL_DISTANCE = 0.1  # the robot counts as stalled while it stays within this distance
 # The house map's 0.1 m cells count as occupied when an obstacle covers any part of them, so its walls are up to a cell
 # too thick; the robot may reach half a cell into them.
@@ -195,6 +195,7 @@ class Monitor(Node):
     navigate_client: ActionClient
     follow_client: ActionClient
     plan_client: ActionClient
+    circle_plan_client: ActionClient
     spin_client: ActionClient
     _navigation_lifecycle_client: Client
 
@@ -223,6 +224,7 @@ class Monitor(Node):
         self.navigate_client = ActionClient(self, NavigateToPose, "/navigate_to_pose")
         self.follow_client = ActionClient(self, FollowPath, "/follow_path")
         self.plan_client = ActionClient(self, ComputePathToPose, "/compute_path_to_pose")
+        self.circle_plan_client = ActionClient(self, ComputePathToPose, "/circle/compute_path_to_pose")
         self.spin_client = ActionClient(self, Spin, "/spin")
         self._navigation_lifecycle_client = self.create_client(Trigger, "/lifecycle_manager_navigation/is_active")
 
@@ -580,7 +582,8 @@ def check_path(
     goal_message.use_start = True
     for planner in PLANNERS:
         goal_message.planner_id = planner
-        status, result = run_action(stack, monitor, monitor.plan_client, goal_message, 30.0)
+        client = monitor.circle_plan_client if planner == "Circle" else monitor.plan_client
+        status, result = run_action(stack, monitor, client, goal_message, 30.0)
         if status == GoalStatus.STATUS_SUCCEEDED:
             stack.metrics.setdefault("planners", []).append(planner)
             break
@@ -745,6 +748,7 @@ COURSE_DESCRIPTIONS = {
     "unmapped_obstacle": "round a box on the way that the map does not know",
     "blocked": "towards a goal behind a wall whose only gap (0.3 m) is narrower than the robot",
     "goal_on_table": "towards a goal in the middle of a table",
+    "elevated_table": "round a table top in the way that only the map has, not the lidar",
     "goal_enclosed": "towards a goal inside a closed box",
 }
 SCENARIOS = {
@@ -760,7 +764,7 @@ SCENARIOS = {
                 course=name,
             )
             for name, course in COURSES.items()
-            if not course.unmapped and course.turns_at_start
+            if not course.unmapped and not course.start_occupied
         ),
         Scenario(
             "planner_house",

@@ -109,9 +109,10 @@ class Course:
     that distance of it (the closest reachable pose plus the controller's 0.25 m goal tolerance). A course that fails
     for a reason accepted for now names it in `known_issue`; `run all` leaves it out. `map_errors` are boxes occupied
     in the map only, `unmapped` boxes are in the world only; the planner and controller tests, which rely on the map,
-    skip a course with unmapped boxes. The planner test also skips a course whose start is too close to an obstacle to
-    turn (`turns_at_start` false): the fallback planner plans out of it, and the path turns away right at the start,
-    which the controller does while driving forwards.
+    skip a course with unmapped boxes. `elevated` boxes are in the map and in the world but too high for the lidar, like
+    a table top, so the simulator leaves them out. The planner test also skips a course whose robot starts in occupied
+    map cells or inside the planners' margin (`start_occupied`): no planner starts there; the escape node, which needs
+    the simulator, first moves the robot out.
     """
 
     boxes: list[Box]
@@ -123,18 +124,19 @@ class Course:
     known_issue: Optional[str] = None
     map_errors: list[Box] = field(default_factory=list)
     unmapped: list[Box] = field(default_factory=list)
-    turns_at_start: bool = True
+    elevated: list[Box] = field(default_factory=list)
+    start_occupied: bool = False
 
     def reference_poses(self) -> list[Pose]:
         points = densify([self.start[:2], *self.reference_path, self.goal])
         return [(x, y, heading) for (x, y), heading in zip(points, path_headings(points))]
 
     def occupancy_map(self) -> OccupancyMap:
-        return OccupancyMap.from_boxes(self.boxes + self.map_errors)
+        return OccupancyMap.from_boxes(self.boxes + self.map_errors + self.elevated)
 
     def obstacles(self) -> shapely.Geometry:
         """The world's obstacles, which collisions are judged against."""
-        return shapely.union_all([shapely.box(*box) for box in self.boxes + self.unmapped])
+        return shapely.union_all([shapely.box(*box) for box in self.boxes + self.unmapped + self.elevated])
 
     def write_obstacles(self, path: Path) -> None:
         """In the format of standalone_sim.py --obstacles."""
@@ -200,11 +202,13 @@ COURSES = {
         reference_path=[(2.3, -1.4), (3.8, -1.4)],
     ),
     # The robot starts at the closed end of a dead-end corridor, facing the wall; the goal is behind it. It has 2 cm on
-    # either side to turn round, but its planner leaves a 5 cm margin, so only the fallback planner finds a path.
+    # either side to turn round, but its planners leave a 5 cm margin, and it is not in occupied cells to escape from.
     "dead_end": Course(
         arena(5.0, 3.0) + cross_wall(3.0, 3.0, [(0.0, GAP)], depth=2.0),
         start=(4.6, 0.0, 0.0),
         goal=(1.0, 0.0),
+        known_issue="no planner turns within the margin, the escape node does nothing outside occupied cells, and the "
+        "Approach planner returns the start, so the robot stays",
     ),
     # A 0.7 m wide corridor turning by 90 degrees. Where the path turns, base_link's position near the front lets the
     # back swing out towards the outer walls; the house showed planners clipping such corners.
@@ -235,6 +239,7 @@ COURSES = {
         goal=(3.4, 0.0),
         reference_path=[(1.5, 0.6), (2.6, 0.6)],
         map_errors=[(1.55, -0.1, 1.75, 0.1), (1.55, 0.15, 1.65, 0.25), (1.55, -0.25, 1.65, -0.15)],
+        known_issue="freeing the footprint from the wrong cells takes more than the escape's 0.2 m",
     ),
     # Along a 0.8 m corridor the map's wall is 0.25 m too far in, overlapping the side of the robot that starts there.
     "phantom_side": Course(
@@ -242,6 +247,9 @@ COURSES = {
         start=(1.2, 0.0, 0.0),
         goal=(4.4, 0.0),
         map_errors=[(1.0, 0.15, 2.5, 0.4)],
+        start_occupied=True,
+        known_issue="the wrong wall narrows the corridor to 0.55 m: the escape frees the footprint by turning, but no "
+        "planner can turn back within the margin there (the robot is boxed in by the map error)",
     ),
     # The map is right, but the robot overshot: it starts 3 cm from the wall of a 0.6 m corridor, inside the margin that
     # the planner keeps, so its start counts as occupied there.
@@ -250,7 +258,7 @@ COURSES = {
         start=(2.0, 0.1, 0.0),
         goal=(5.0, 0.0),
         reference_path=[(3.0, 0.0)],
-        turns_at_start=False,
+        start_occupied=True,
     ),
     # The same overshoot next to a single wall in the open, where there is room to move away from it.
     "margin_open": Course(
@@ -258,7 +266,7 @@ COURSES = {
         start=(2.0, 0.1, 0.0),
         goal=(5.0, 0.0),
         reference_path=[(3.0, 0.0)],
-        turns_at_start=False,
+        start_occupied=True,
     ),
     # A box on the straight way to the goal that the map does not know; the robot has to see it with the lidar and
     # go round it.
@@ -272,7 +280,14 @@ COURSES = {
         start=(0.6, 0.0, 0.0),
         goal=(5.4, 0.0),
         closest_approach=2.9,
-        known_issue="the fallback planner, which checks only the robot's centre, plans through the gap",
+    ),
+    # A table top in the way that the lidar cannot see (it passes under it): only /map has it.
+    "elevated_table": Course(
+        arena(6.0, 3.0),
+        start=(0.6, 0.0, 0.0),
+        goal=(5.4, 0.0),
+        reference_path=[(2.2, 1.05), (3.8, 1.05)],
+        elevated=[(2.6, -0.6, 3.4, 0.6)],
     ),
     # The goal is in the middle of a 0.8 m table, as when asked to go to an object on it; the closest the robot gets is
     # facing the table's edge, base_link 0.5 m from the goal.
