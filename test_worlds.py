@@ -106,7 +106,7 @@ class Course:
     `reference_path` lists the corners of a path from the start to the goal that the robot fits along, which the
     controller tests give to the controller. A course whose goal the robot cannot reach (inside an obstacle, like on a
     table, or cut off) has no such path but a `closest_approach`: the robot must still head for the goal and end within
-    that distance of it (the closest reachable pose plus the controller's 0.25 m goal tolerance). A course that fails
+    that distance of it (the closest reachable pose plus a margin for the controller's goal tolerance). A course that fails
     for a reason accepted for now names it in `known_issue`; `run all` leaves it out. `map_errors` are boxes occupied
     in the map only, `unmapped` boxes are in the world only; the planner and controller tests, which rely on the map,
     skip a course with unmapped boxes. `elevated` boxes are in the map and in the world but too high for the lidar, like

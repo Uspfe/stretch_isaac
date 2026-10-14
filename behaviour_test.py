@@ -91,7 +91,7 @@ ABORTED_BRINGUP = "Aborting bringup"
 # Isaac Sim 5.1 occasionally crashes in carb.tasking within its first second, before loading anything.
 ISAAC_SIM_STARTUP_CRASH = "Crash detected"
 GOAL_TIMEOUT = 240.0  # simulated seconds for one navigation goal or one path to follow
-GOAL_DISTANCE = 0.35  # how close the robot must end to a goal it can reach
+GOAL_DISTANCE = 0.15  # how close the robot must end to a goal it can reach (the goal tolerance is 0.05 m)
 PLANNERS = ("Circle", "GridBased", "Approach")  # in the order the behaviour tree tries them
 STALL_DISTANCE = 0.1  # the robot counts as stalled while it stays within this distance
 # The house map's 0.1 m cells count as occupied when an obstacle covers any part of them, so its walls are up to a cell
@@ -552,6 +552,8 @@ def navigate_to(
     if status != GoalStatus.STATUS_SUCCEEDED:
         failures.append(f"NavigateToPose to {position} ended with status {status} instead of SUCCEEDED (4)")
     pose = monitor.pose()
+    if pose is not None:
+        stack.metrics.setdefault("goal_distances", []).append(math.dist(pose[:2], position))
     if pose is None or math.dist(pose[:2], position) > within:
         failures.append(f"robot ended at {pose}, more than {within} m from the goal {position}")
     return failures
