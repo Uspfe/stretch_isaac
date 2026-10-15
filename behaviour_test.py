@@ -68,6 +68,7 @@ from test_worlds import (
     Point,
     Pose,
     minimum_clearance,
+    path_headings,
     reversing_distance,
     swept_poses,
 )
@@ -196,6 +197,7 @@ class Monitor(Node):
     follow_client: ActionClient
     plan_client: ActionClient
     circle_plan_client: ActionClient
+    approach_client: ActionClient
     spin_client: ActionClient
     _navigation_lifecycle_client: Client
 
@@ -225,6 +227,7 @@ class Monitor(Node):
         self.follow_client = ActionClient(self, FollowPath, "/follow_path")
         self.plan_client = ActionClient(self, ComputePathToPose, "/compute_path_to_pose")
         self.circle_plan_client = ActionClient(self, ComputePathToPose, "/circle/compute_path_to_pose")
+        self.approach_client = ActionClient(self, ComputePathToPose, "/approach")
         self.spin_client = ActionClient(self, Spin, "/spin")
         self._navigation_lifecycle_client = self.create_client(Trigger, "/lifecycle_manager_navigation/is_active")
 
@@ -569,10 +572,11 @@ def check_goals_feasible(occupancy_map: OccupancyMap, goals: list[Point]) -> Non
 def plan(
     stack: Stack, monitor: Monitor, planner: str, goal: ComputePathToPose.Goal
 ) -> tuple[Optional[int], Optional[ComputePathToPose.Result]]:
-    """ComputePathToPose with `planner`, on the planner server the behaviour tree asks for it."""
-    goal.planner_id = planner
-    client = monitor.circle_plan_client if planner == "Circle" else monitor.plan_client
-    return run_action(stack, monitor, client, goal, 30.0)
+    """ComputePathToPose with `planner` as the behaviour tree asks for it; Approach is the approach node, which cuts
+    the Point planner's path where the footprint would collide."""
+    goal.planner_id = "Point" if planner == "Approach" else planner
+    clients = {"Circle": monitor.circle_plan_client, "Approach": monitor.approach_client}
+    return run_action(stack, monitor, clients.get(planner, monitor.plan_client), goal, 30.0)
 
 
 def path_points(result: Optional[ComputePathToPose.Result]) -> tuple[list[Point], list[float], Optional[list[float]]]:
@@ -640,8 +644,9 @@ def plan_course(stack: Stack, monitor: Monitor) -> list[str]:
 
 def plan_from_occupied_start(stack: Stack, monitor: Monitor) -> list[str]:
     """Each planner on its own, from a start whose footprint overlaps occupied map cells or the planners' margin. A
-    planner may refuse, but once the footprint swept along its path is clear of the map's obstacles it must stay
-    clear: a path must not lead through an obstacle the planner knows of."""
+    planner may refuse (or return a path that stays at the start), but once the footprint driven forwards along its
+    path is clear of the map's obstacles it must stay clear: a path must not lead through an obstacle the planner
+    knows of. Turning on the spot at the start and the goal is left to the controller tests."""
     course = stack.course
     map_obstacles = stack.occupancy_map().obstacles()
     goal_message = ComputePathToPose.Goal()
@@ -650,12 +655,14 @@ def plan_from_occupied_start(stack: Stack, monitor: Monitor) -> list[str]:
     failures = []
     for planner in PLANNERS:
         status, result = plan(stack, monitor, planner, goal_message)
-        points, _, headings = path_points(result)
-        planned = status == GoalStatus.STATUS_SUCCEEDED and len(points) > 0
+        points = path_points(result)[0]
+        planned = status == GoalStatus.STATUS_SUCCEEDED and any(
+            math.dist(point, course.start[:2]) > STALL_DISTANCE for point in points
+        )
         stack.metrics.setdefault("planned", {})[planner] = planned
         if not planned:
             continue
-        poses = swept_poses(points, course.start[2], course.goal_yaw, headings)
+        poses = [(x, y, heading) for (x, y), heading in zip(points, path_headings(points))]
         clearances = [minimum_clearance([pose], map_obstacles)[0] for pose in poses]
         first_clear = next((index for index, clearance in enumerate(clearances) if clearance > 0.0), None)
         if first_clear is None:

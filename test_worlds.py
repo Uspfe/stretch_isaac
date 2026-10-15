@@ -208,8 +208,8 @@ COURSES = {
         arena(5.0, 3.0) + cross_wall(3.0, 3.0, [(0.0, GAP)], depth=2.0),
         start=(4.6, 0.0, 0.0),
         goal=(1.0, 0.0),
-        known_issue="no planner turns within the margin, the escape node does nothing outside occupied cells, and the "
-        "Approach planner returns the start, so the robot stays",
+        known_issue="the Circle planner finds the way out, but turning round leaves 2 cm a side, which RPP's collision "
+        "check (0.02 m padding) refuses",
     ),
     # A 0.7 m wide corridor turning by 90 degrees. Where the path turns, base_link's position near the front lets the
     # back swing out towards the outer walls; the house showed planners clipping such corners.
