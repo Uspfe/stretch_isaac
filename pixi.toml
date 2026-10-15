@@ -26,9 +26,36 @@ LD_LIBRARY_PATH = "$LD_LIBRARY_PATH:$isaac_sim_package_path/exts/isaacsim.ros2.b
 RMW_IMPLEMENTATION="rmw_fastrtps_cpp"
 ROS_DISCOVERY_SERVER="127.0.0.1:14520"
 
+# Behaviour tests (behaviour_test.py): ROS 2 Jazzy from robostack, without Isaac Sim, which the runner starts in the
+# default environment.
+[feature.test]
+channels = ["robostack-jazzy", "conda-forge"]
+
+[feature.test.dependencies]
+python = "3.12.*"
+ros-jazzy-rclpy = "*"
+ros-jazzy-rmw-fastrtps-cpp = "*"
+ros-jazzy-action-msgs = "*"
+ros-jazzy-geometry-msgs = "*"
+ros-jazzy-nav-msgs = "*"
+ros-jazzy-nav2-msgs = "*"
+ros-jazzy-rosgraph-msgs = "*"
+ros-jazzy-sensor-msgs = "*"
+ros-jazzy-std-msgs = "*"
+ros-jazzy-std-srvs = "*"
+ros-jazzy-tf2-ros-py = "*"
+ros-jazzy-ros2cli-common-extensions = "*"
+shapely = "*"
+pyyaml = "*"
+ros-jazzy-laser-filters = "*"
+
+[feature.test.tasks]
+behaviour-test = "python -u behaviour_test.py"
+
 [environments]
 default = {features = [], solve-group = "default"}
 fastrtps = {features = ["fastrtps"], solve-group = "default"}
+test = {features = ["test"], no-default-feature = true, solve-group = "test"}
 
 [pypi-dependencies]
 isaacsim = { version = "==5.1.0", extras = ["all", "extscache", "ros2"] }

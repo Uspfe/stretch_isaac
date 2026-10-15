@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- Keeps all Fast DDS traffic on this machine: UDP only on the loopback interface, plus shared memory, and
+     discovery by unicast to 127.0.0.1 instead of multicast. Fast DDS 2.x (Jazzy) reads it from
+     FASTRTPS_DEFAULT_PROFILES_FILE. Do not also set ROS_AUTOMATIC_DISCOVERY_RANGE: rmw_fastrtps then opens
+     send sockets on every network interface again. -->
+<profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+    <transport_descriptors>
+        <transport_descriptor>
+            <transport_id>loopback_udp</transport_id>
+            <type>UDPv4</type>
+            <!-- Unicast discovery only reaches this many participants per host (default 4); Isaac Sim alone
+                 creates one per ROS2Context node. -->
+            <maxInitialPeersRange>32</maxInitialPeersRange>
+            <interfaceWhiteList>
+                <address>127.0.0.1</address>
+            </interfaceWhiteList>
+        </transport_descriptor>
+        <transport_descriptor>
+            <transport_id>shared_memory</transport_id>
+            <type>SHM</type>
+        </transport_descriptor>
+    </transport_descriptors>
+    <participant profile_name="localhost_only" is_default_profile="true">
+        <rtps>
+            <userTransports>
+                <transport_id>loopback_udp</transport_id>
+                <transport_id>shared_memory</transport_id>
+            </userTransports>
+            <useBuiltinTransports>false</useBuiltinTransports>
+            <builtin>
+                <metatrafficUnicastLocatorList>
+                    <locator>
+                        <udpv4>
+                            <address>127.0.0.1</address>
+                        </udpv4>
+                    </locator>
+                </metatrafficUnicastLocatorList>
+                <initialPeersList>
+                    <locator>
+                        <udpv4>
+                            <address>127.0.0.1</address>
+                        </udpv4>
+                    </locator>
+                </initialPeersList>
+            </builtin>
+        </rtps>
+    </participant>
+</profiles>

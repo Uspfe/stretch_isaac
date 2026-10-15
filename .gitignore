@@ -1,3 +1,4 @@
 .pixi/
 __pycache__/
 .ruff_cache/
+test_runs/
