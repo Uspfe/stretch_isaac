@@ -78,6 +78,7 @@ Isaac Sim's ROS bridge ships only Fast DDS and Cyclone DDS, not zenoh. To keep t
 | Scenarios | What they test | Simulator |
 |---|---|---|
 | `planner_*` | `ComputePathToPose` on each course and every leg of the house routes. Where the robot fits through, a path must exist, and the footprint swept along it (turns included) must not touch an obstacle. Where the main planner fails, the other planners are tried in the behaviour tree's order. Where the goal cannot be reached (`blocked`: behind a gap narrower than the robot, `goal_on_table`, `goal_enclosed`), the path must end close to it | no: tf holds the robot at the start; seconds per scenario |
+| `planner_occupied_start_*` | each planner on its own from a start overlapping occupied map cells or the planners' margin: it may refuse, but once the swept footprint is clear of the map it must stay clear (no path through an obstacle the planner knows) | no |
 | `controller_*` | `FollowPath` along a fixed reference path through each course: reach the end without contact and without getting stuck | Isaac Sim |
 | `navigation_*` | `NavigateToPose` end to end, through the courses and along waypoint routes in the house; `navigation_spin` tests the Spin behavior | Isaac Sim |
 | `simulation_odometry` | `/odom`'s twist matches its poses, which the controllers rely on | Isaac Sim |

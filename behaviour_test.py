@@ -566,6 +566,25 @@ def check_goals_feasible(occupancy_map: OccupancyMap, goals: list[Point]) -> Non
             raise ValueError(f"goal {goal} is closer than {GOAL_CLEARANCE} m to an obstacle on the map")
 
 
+def plan(
+    stack: Stack, monitor: Monitor, planner: str, goal: ComputePathToPose.Goal
+) -> tuple[Optional[int], Optional[ComputePathToPose.Result]]:
+    """ComputePathToPose with `planner`, on the planner server the behaviour tree asks for it."""
+    goal.planner_id = planner
+    client = monitor.circle_plan_client if planner == "Circle" else monitor.plan_client
+    return run_action(stack, monitor, client, goal, 30.0)
+
+
+def path_points(result: Optional[ComputePathToPose.Result]) -> tuple[list[Point], list[float], Optional[list[float]]]:
+    """The positions and yaws of a planned path, and its headings if the planner orients its poses."""
+    poses = result.path.poses if result else []
+    points = [(pose.pose.position.x, pose.pose.position.y) for pose in poses]
+    yaws = [2.0 * math.atan2(pose.pose.orientation.z, pose.pose.orientation.w) for pose in poses]
+    # Planners that model the robot's heading (Smac) orient every pose; others (NavFn) leave them all at zero.
+    headings = yaws if any(abs(yaw) > 1e-6 for yaw in yaws[:-1]) else None
+    return points, yaws, headings
+
+
 def check_path(
     stack: Stack,
     start: Pose,
@@ -583,18 +602,12 @@ def check_path(
     goal_message.goal, goal_message.start = pose_stamped(*goal, goal_yaw), pose_stamped(*start)
     goal_message.use_start = True
     for planner in PLANNERS:
-        goal_message.planner_id = planner
-        client = monitor.circle_plan_client if planner == "Circle" else monitor.plan_client
-        status, result = run_action(stack, monitor, client, goal_message, 30.0)
+        status, result = plan(stack, monitor, planner, goal_message)
         if status == GoalStatus.STATUS_SUCCEEDED:
             stack.metrics.setdefault("planners", []).append(planner)
             break
     label = f"path from {start[:2]} to {goal}"
-    poses = result.path.poses if result else []
-    points = [(pose.pose.position.x, pose.pose.position.y) for pose in poses]
-    yaws = [2.0 * math.atan2(pose.pose.orientation.z, pose.pose.orientation.w) for pose in poses]
-    # Planners that model the robot's heading (Smac) orient every pose; others (NavFn) leave them all at zero.
-    headings = yaws if any(abs(yaw) > 1e-6 for yaw in yaws[:-1]) else None
+    points, yaws, headings = path_points(result)
     arrival = (*goal, goal_yaw)
     if status != GoalStatus.STATUS_SUCCEEDED or not points:
         return [f"no {label} (status {status})"], arrival
@@ -623,6 +636,35 @@ def plan_course(stack: Stack, monitor: Monitor) -> list[str]:
     if course.closest_approach is None:
         check_goals_feasible(stack.occupancy_map(), [course.goal])
     return check_path(stack, course.start, course.goal, course.goal_yaw, course.closest_approach)[0]
+
+
+def plan_from_occupied_start(stack: Stack, monitor: Monitor) -> list[str]:
+    """Each planner on its own, from a start whose footprint overlaps occupied map cells or the planners' margin. A
+    planner may refuse, but once the footprint swept along its path is clear of the map's obstacles it must stay
+    clear: a path must not lead through an obstacle the planner knows of."""
+    course = stack.course
+    map_obstacles = stack.occupancy_map().obstacles()
+    goal_message = ComputePathToPose.Goal()
+    goal_message.goal, goal_message.start = pose_stamped(*course.goal, course.goal_yaw), pose_stamped(*course.start)
+    goal_message.use_start = True
+    failures = []
+    for planner in PLANNERS:
+        status, result = plan(stack, monitor, planner, goal_message)
+        points, _, headings = path_points(result)
+        planned = status == GoalStatus.STATUS_SUCCEEDED and len(points) > 0
+        stack.metrics.setdefault("planned", {})[planner] = planned
+        if not planned:
+            continue
+        poses = swept_poses(points, course.start[2], course.goal_yaw, headings)
+        clearances = [minimum_clearance([pose], map_obstacles)[0] for pose in poses]
+        first_clear = next((index for index, clearance in enumerate(clearances) if clearance > 0.0), None)
+        if first_clear is None:
+            failures.append(f"{planner}'s path never frees the footprint from the map's obstacles")
+            continue
+        entered = next((poses[index] for index in range(first_clear, len(poses)) if clearances[index] <= 0.0), None)
+        if entered is not None:
+            failures.append(f"{planner}'s path leads the footprint into a map obstacle at (x, y, yaw) {entered}")
+    return failures
 
 
 def plan_routes(stack: Stack, monitor: Monitor) -> list[str]:
@@ -767,6 +809,17 @@ SCENARIOS = {
             )
             for name, course in COURSES.items()
             if not course.unmapped and not course.start_occupied
+        ),
+        *(
+            Scenario(
+                f"planner_occupied_start_{name}",
+                f"Each planner on its own, {COURSE_DESCRIPTIONS[name]}: no path through a map obstacle.",
+                plan_from_occupied_start,
+                simulate=False,
+                course=name,
+            )
+            for name, course in COURSES.items()
+            if course.start_occupied or course.map_errors
         ),
         Scenario(
             "planner_house",

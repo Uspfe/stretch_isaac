@@ -112,7 +112,8 @@ class Course:
     skip a course with unmapped boxes. `elevated` boxes are in the map and in the world but too high for the lidar, like
     a table top, so the simulator leaves them out. The planner test also skips a course whose robot starts in occupied
     map cells or inside the planners' margin (`start_occupied`): no planner starts there; the escape node, which needs
-    the simulator, first moves the robot out.
+    the simulator, first moves the robot out. Such courses, and those with map errors, get a planner test of their own:
+    no planner may lead the footprint through a map obstacle from there.
     """
 
     boxes: list[Box]
