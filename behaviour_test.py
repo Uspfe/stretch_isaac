@@ -93,6 +93,7 @@ ABORTED_BRINGUP = "Aborting bringup"
 ISAAC_SIM_STARTUP_CRASH = "Crash detected"
 GOAL_TIMEOUT = 240.0  # simulated seconds for one navigation goal or one path to follow
 GOAL_DISTANCE = 0.25  # how close the robot must end to a goal it can reach (the goal tolerance is 0.15 m)
+GOAL_HEADING_TOLERANCE = 0.35  # rad, how close it must end to the goal's heading (Nav2's tolerance is 0.25)
 PLANNERS = ("Circle", "GridBased", "Approach")  # in the order the behaviour tree tries them
 STALL_DISTANCE = 0.1  # the robot counts as stalled while it stays within this distance
 # The house map's 0.1 m cells count as occupied when an obstacle covers any part of them, so its walls are up to a cell
@@ -543,9 +544,15 @@ def check_trajectory(stack: Stack, monitor: Monitor) -> list[str]:
 
 
 def navigate_to(
-    stack: Stack, monitor: Monitor, position: Point, yaw: float = 0.0, within: float = GOAL_DISTANCE
+    stack: Stack,
+    monitor: Monitor,
+    position: Point,
+    yaw: float = 0.0,
+    within: float = GOAL_DISTANCE,
+    check_heading: bool = True,
 ) -> list[str]:
-    """NavigateToPose must succeed within GOAL_TIMEOUT and end `within` that distance of `position`."""
+    """NavigateToPose must succeed within GOAL_TIMEOUT and end `within` that distance of `position`, facing `yaw` if
+    `check_heading` (not for a goal it cannot reach: there it faces the goal's position)."""
     goal = NavigateToPose.Goal()
     goal.pose = pose_stamped(*position, yaw)
     start = monitor.simulation_time()
@@ -559,6 +566,11 @@ def navigate_to(
         stack.metrics.setdefault("goal_distances", []).append(math.dist(pose[:2], position))
     if pose is None or math.dist(pose[:2], position) > within:
         failures.append(f"robot ended at {pose}, more than {within} m from the goal {position}")
+    if pose is not None and check_heading:
+        heading_error = abs(math.remainder(pose[2] - yaw, 2 * math.pi))
+        stack.metrics.setdefault("goal_heading_errors", []).append(heading_error)
+        if heading_error > GOAL_HEADING_TOLERANCE:
+            failures.append(f"robot ended facing {pose[2]:.2f} rad, {heading_error:.2f} rad off the goal's {yaw:.2f}")
     return failures
 
 
@@ -711,7 +723,8 @@ def follow_reference_path(stack: Stack, monitor: Monitor) -> list[str]:
 def navigate_course(stack: Stack, monitor: Monitor) -> list[str]:
     course = stack.course
     within = course.closest_approach or GOAL_DISTANCE
-    return navigate_to(stack, monitor, course.goal, course.goal_yaw, within) + check_trajectory(stack, monitor)
+    failures = navigate_to(stack, monitor, course.goal, course.goal_yaw, within, course.closest_approach is None)
+    return failures + check_trajectory(stack, monitor)
 
 
 def drive_route(name: str) -> Callable[[Stack, Monitor], list[str]]:
