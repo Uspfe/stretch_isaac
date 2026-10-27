@@ -75,7 +75,7 @@ from test_worlds import (
 
 MONOREPO = STRETCH_ISAAC.parent
 STRETCH_MPC = MONOREPO / "stretch_mpc"
-STRETCH_CORE = MONOREPO / "online_bringup_active_mapmaintenance" / "stretch_ros2" / "stretch_ros2" / "stretch_core"
+STRETCH_CORE = MONOREPO / "stretch_bringup" / "stretch_ros2" / "stretch_ros2" / "stretch_core"
 LASER_FILTER_PARAMETERS = STRETCH_CORE / "config" / "laser_filter_params.yaml"
 FAST_DDS_PROFILE = STRETCH_ISAAC / "config" / "fastdds_localhost.xml"
 TEST_RUNS = STRETCH_ISAAC / "test_runs"
